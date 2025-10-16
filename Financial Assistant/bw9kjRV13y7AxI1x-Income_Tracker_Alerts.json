@@ -1,0 +1,1367 @@
+{
+  "name": "Income Tracker & Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Input Adapter with comprehensive configuration\nconst fromTrigger = $input.first()?.json || {};\nconst config = {\n  // Alert channels and formatting\n  SLACK_CHANNEL: fromTrigger.SLACK_CHANNEL || \"#finance-alerts\",\n  EMAIL_ALERTS: fromTrigger.EMAIL_ALERTS ?? false,\n  POST_SUMMARY: fromTrigger.POST_SUMMARY ?? true,\n  \n  // Timing and thresholds\n  GRACE_DAYS: Number(fromTrigger.GRACE_DAYS ?? 2),\n  MONTHLY_MIN_THRESHOLD: Number(fromTrigger.MONTHLY_MIN_THRESHOLD ?? 0),\n  VARIANCE_THRESHOLD: Number(fromTrigger.VARIANCE_THRESHOLD ?? 50), // Minimum €50 variance for alerts\n  \n  // Noise reduction settings\n  BATCH_SIMILAR_ALERTS: fromTrigger.BATCH_SIMILAR_ALERTS ?? true,\n  DUPLICATE_WINDOW_HOURS: Number(fromTrigger.DUPLICATE_WINDOW_HOURS ?? 24),\n  MIN_UNEXPECTED_AMOUNT: Number(fromTrigger.MIN_UNEXPECTED_AMOUNT ?? 100), // Minimum €100 for unexpected income alerts\n  \n  // Integration flags\n  UPDATE_BUDGET_PROJECTIONS: fromTrigger.UPDATE_BUDGET_PROJECTIONS ?? true,\n  UPDATE_GOAL_PROGRESS: fromTrigger.UPDATE_GOAL_PROGRESS ?? true,\n  SYNC_CASH_FLOW: fromTrigger.SYNC_CASH_FLOW ?? true,\n  \n  // Current period info\n  CURRENT_MONTH: new Date().toISOString().slice(0, 7),\n  TIMESTAMP: new Date().toISOString()\n};\n\nconsole.log('📋 Income Tracker Configuration:', config);\nreturn config;"
+      },
+      "id": "7536ea02-67f7-43e8-a99f-c14736db5c80",
+      "name": "Enhanced Input Adapter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        -848
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": 716758115,
+          "cachedResultName": "Transactions"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Date",
+              "lookupValue": "={{ $('Enhanced Input Adapter').item.json.CURRENT_MONTH }}"
+            },
+            {
+              "lookupColumn": "Type",
+              "lookupValue": "income"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "53c549e7-a6af-4c5c-b5b0-bca360804999",
+      "name": "Get Current Month Income",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -656,
+        -1024
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": 716758115,
+          "cachedResultName": "Transactions"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Type",
+              "lookupValue": "income"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "00bac8a4-6787-4a46-8220-038cd4864e85",
+      "name": "Get Historical Income (3 months)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -656,
+        -848
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Income Categorization with Confidence Scoring\nconst currentMonth = $('Enhanced Input Adapter').first().json.CURRENT_MONTH;\n\n// Enhanced categorization rules with confidence scoring\nconst incomeRules = {\n  'Salary': {\n    keywords: ['salary', 'payroll', 'wage', 'paycheck', 'net pay', 'pay day', 'monthly pay'],\n    confidence: 'high',\n    recurring: true,\n    priority: 1\n  },\n  'Freelance': {\n    keywords: ['invoice', 'freelance', 'contract', 'upwork', 'fiverr', 'stripe', 'paypal', 'client payment', 'project payment'],\n    confidence: 'medium',\n    recurring: false,\n    priority: 2\n  },\n  'Dividends': {\n    keywords: ['dividend', 'payout', 'distribution', 'investment income', 'stock dividend'],\n    confidence: 'high',\n    recurring: true,\n    priority: 3\n  },\n  'Interest': {\n    keywords: ['interest', 'yield', 'savings interest', 'isa', 'apy', 'bond interest'],\n    confidence: 'high',\n    recurring: true,\n    priority: 4\n  },\n  'Benefits': {\n    keywords: ['benefit', 'allowance', 'pension', 'social security', 'unemployment', 'disability'],\n    confidence: 'high',\n    recurring: true,\n    priority: 5\n  },\n  'Refunds': {\n    keywords: ['refund', 'reversal', 'chargeback', 'cashback', 'tax refund', 'insurance claim'],\n    confidence: 'medium',\n    recurring: false,\n    priority: 6\n  },\n  'Side Income': {\n    keywords: ['rental', 'side hustle', 'gig', 'uber', 'delivery', 'etsy', 'ebay', 'marketplace'],\n    confidence: 'medium',\n    recurring: false,\n    priority: 7\n  }\n};\n\n// Process current month income transactions\nconst processedIncome = $input.all()\n  .filter(item => {\n    const tx = item.json;\n    const txMonth = (tx.month || '').slice(0, 7);\n    const isIncome = String(tx.type || '').toLowerCase() === 'income';\n    return txMonth === currentMonth && isIncome && tx.amount && Number(tx.amount) > 0;\n  })\n  .map(item => {\n    const tx = item.json;\n    const searchText = `${tx.purpose || ''} ${tx.category || ''} ${tx.merchant || ''}`.toLowerCase();\n    \n    // Check if already properly categorized\n    let assignedCategory = null;\n    let confidence = 'low';\n    let matchedRule = null;\n    \n    if (tx.category && Object.keys(incomeRules).includes(tx.category)) {\n      assignedCategory = tx.category;\n      confidence = incomeRules[tx.category].confidence;\n    } else {\n      // Find best matching rule\n      const matches = [];\n      \n      for (const [category, rule] of Object.entries(incomeRules)) {\n        const keywordMatches = rule.keywords.filter(keyword => \n          searchText.includes(keyword.toLowerCase())\n        ).length;\n        \n        if (keywordMatches > 0) {\n          matches.push({\n            category,\n            score: keywordMatches * (rule.priority <= 3 ? 2 : 1), // Boost common categories\n            confidence: rule.confidence,\n            rule\n          });\n        }\n      }\n      \n      // Select best match\n      if (matches.length > 0) {\n        const bestMatch = matches.sort((a, b) => b.score - a.score)[0];\n        assignedCategory = bestMatch.category;\n        confidence = bestMatch.confidence;\n        matchedRule = bestMatch.rule;\n      } else {\n        assignedCategory = 'Income-Other';\n        confidence = 'low';\n      }\n    }\n    \n    return {\n      json: {\n        ...tx,\n        category: assignedCategory,\n        confidence: confidence,\n        recurring: matchedRule ? matchedRule.recurring : false,\n        _ts: tx.date,\n        _amt: Number(tx.amount || 0),\n        _purpose: (tx.purpose || '').trim(),\n        _merchant: (tx.merchant || '').trim(),\n        _processed_at: new Date().toISOString()\n      }\n    };\n  });\n\nconsole.log(`💰 Processed ${processedIncome.length} income transactions for ${currentMonth}`);\nif (processedIncome.length > 0) {\n  console.log('📊 Category breakdown:', \n    processedIncome.reduce((acc, item) => {\n      const cat = item.json.category;\n      acc[cat] = (acc[cat] || 0) + 1;\n      return acc;\n    }, {})\n  );\n}\n\nreturn processedIncome;"
+      },
+      "id": "363655e2-3861-41f9-a272-58c46d180b88",
+      "name": "Enhanced Income Categorization",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        -960
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "expected_income",
+          "cachedResultName": "expected_income"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "month",
+              "lookupValue": "={{ $('Enhanced Input Adapter').item.json.CURRENT_MONTH }}"
+            },
+            {
+              "lookupColumn": "active",
+              "lookupValue": "true"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "227513db-a497-45a4-b863-7449fd7fffe6",
+      "name": "Get Expected Income (Current Month)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -656,
+        -672
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Historical Trend Analysis\nconst config = $('Enhanced Input Adapter').first().json;\nconst currentMonth = config.CURRENT_MONTH;\n\n// Get historical data for trend analysis\nconst historicalTransactions = $('Get Historical Income (3 months)').all().map(i => i.json);\n\n// Calculate 3-month trends by category\nconst monthlyTotals = {};\nconst categoryTrends = {};\n\nhistoricalTransactions\n  .filter(tx => tx.type?.toLowerCase() === 'income' && tx.amount && Number(tx.amount) > 0)\n  .forEach(tx => {\n    const month = (tx.month || '').slice(0, 7);\n    const category = tx.category || 'Uncategorized';\n    const amount = Number(tx.amount);\n    \n    if (!monthlyTotals[month]) monthlyTotals[month] = 0;\n    monthlyTotals[month] += amount;\n    \n    if (!categoryTrends[category]) categoryTrends[category] = {};\n    if (!categoryTrends[category][month]) categoryTrends[category][month] = 0;\n    categoryTrends[category][month] += amount;\n  });\n\n// Calculate trend indicators\nconst months = Object.keys(monthlyTotals).sort().slice(-3); // Last 3 months\nconst trendData = {\n  monthlyTotals,\n  categoryTrends,\n  recentMonths: months,\n  averageMonthlyIncome: months.length > 0 ? \n    months.reduce((sum, month) => sum + (monthlyTotals[month] || 0), 0) / months.length : 0,\n  trendDirection: 'stable'\n};\n\n// Determine trend direction\nif (months.length >= 2) {\n  const recent = monthlyTotals[months[months.length - 1]] || 0;\n  const previous = monthlyTotals[months[months.length - 2]] || 0;\n  const changePercent = previous > 0 ? ((recent - previous) / previous) * 100 : 0;\n  \n  if (changePercent > 10) trendData.trendDirection = 'increasing';\n  else if (changePercent < -10) trendData.trendDirection = 'decreasing';\n  \n  trendData.trendChange = changePercent;\n}\n\nconsole.log('📈 Trend Analysis:', trendData);\nreturn { json: trendData };"
+      },
+      "id": "361377dc-9ba0-4483-aa8a-228fa58de849",
+      "name": "Historical Trend Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        -784
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Alert Generation with Noise Reduction\nconst config = $('Enhanced Input Adapter').first().json;\nconst income = $('Enhanced Income Categorization').all().map(i => i.json);\nconst expected = $('Get Expected Income (Current Month)').all().map(i => i.json);\nconst trendData = $('Historical Trend Analysis').first().json;\n\nconst currentMonth = config.CURRENT_MONTH;\nconst today = new Date();\n\n// Helper functions\nfunction withinDays(dateA, dateB, toleranceDays) {\n  if (!dateA || !dateB) return false;\n  return Math.abs((dateA - dateB) / (1000 * 3600 * 24)) <= toleranceDays;\n}\n\nfunction parseDate(dateStr) {\n  if (!dateStr) return null;\n  const date = new Date(dateStr);\n  return isNaN(date.getTime()) ? null : date;\n}\n\nfunction formatCurrency(amount) {\n  return `€${Number(amount || 0).toFixed(2)}`;\n}\n\nfunction formatDate(dateStr) {\n  return (dateStr || '').slice(0, 10);\n}\n\n// Calculate monthly totals\nconst monthlyTotal = income.reduce((sum, tx) => sum + (Number(tx._amt) || 0), 0);\nconst highConfidenceTotal = income\n  .filter(tx => tx.confidence === 'high')\n  .reduce((sum, tx) => sum + (Number(tx._amt) || 0), 0);\n\n// Alert generation with severity classification\nconst alerts = [];\nconst processedSources = new Set();\n\nconsole.log(`💰 Processing alerts for ${income.length} transactions, ${expected.length} expected incomes`);\n\n// 1. EXPECTED INCOME TRACKING\nexpected\n  .filter(exp => exp.active !== false && exp.source && exp.source.trim())\n  .forEach(expectedIncome => {\n    const source = expectedIncome.source.trim();\n    const expectedDate = parseDate(expectedIncome.expected_date);\n    const toleranceDays = Number(expectedIncome.tolerance_days || config.GRACE_DAYS);\n    const expectedAmount = Number(expectedIncome.amount || 0);\n    \n    if (processedSources.has(source.toLowerCase())) return;\n    processedSources.add(source.toLowerCase());\n    \n    // Find matching transaction\n    const matchedTransaction = income.find(tx => \n      tx._purpose.toLowerCase().includes(source.toLowerCase()) ||\n      tx._merchant.toLowerCase().includes(source.toLowerCase())\n    );\n    \n    if (matchedTransaction) {\n      const txDate = parseDate(matchedTransaction.date);\n      const variance = Math.abs(matchedTransaction._amt - expectedAmount);\n      const variancePercent = expectedAmount > 0 ? (variance / expectedAmount) * 100 : 0;\n      \n      // Check if within expected timeframe\n      if (expectedDate && txDate && withinDays(txDate, expectedDate, toleranceDays)) {\n        // Expected income received\n        let severity = 'info';\n        let message = `✅ **Income received**: ${source}\\nAmount: ${formatCurrency(matchedTransaction._amt)} on ${formatDate(matchedTransaction.date)}`;\n        \n        // Check for significant variance\n        if (variance > config.VARIANCE_THRESHOLD && variancePercent > 15) {\n          severity = 'warning';\n          message += `\\n⚠️ Variance: ${formatCurrency(variance)} (${variancePercent.toFixed(1)}%) from expected ${formatCurrency(expectedAmount)}`;\n        }\n        \n        alerts.push({\n          kind: 'deposit_received',\n          severity,\n          source,\n          amount: matchedTransaction._amt,\n          expected_amount: expectedAmount,\n          variance,\n          variance_percent: variancePercent,\n          date: matchedTransaction.date,\n          message,\n          confidence: matchedTransaction.confidence\n        });\n      }\n    } else if (expectedDate) {\n      // Check if income is overdue\n      const cutoffDate = new Date(expectedDate.getTime() + toleranceDays * 24 * 60 * 60 * 1000);\n      \n      if (today > cutoffDate) {\n        const daysLate = Math.floor((today - cutoffDate) / (1000 * 3600 * 24));\n        const severity = daysLate > 7 ? 'critical' : daysLate > 3 ? 'warning' : 'info';\n        \n        alerts.push({\n          kind: 'income_missing',\n          severity,\n          source,\n          expected_amount: expectedAmount,\n          expected_date: expectedIncome.expected_date,\n          days_late: daysLate,\n          message: `⚠️ **Expected income missing**: ${source}\\nExpected: ${formatCurrency(expectedAmount)} by ${formatDate(expectedIncome.expected_date)}\\nStatus: ${daysLate} days overdue`\n        });\n      }\n    }\n  });\n\n// 2. UNEXPECTED INCOME DETECTION\nconst expectedSources = expected\n  .map(exp => exp.source?.toLowerCase()?.trim())\n  .filter(Boolean);\n\nincome\n  .filter(tx => tx._amt >= config.MIN_UNEXPECTED_AMOUNT)\n  .forEach(tx => {\n    const purpose = tx._purpose.toLowerCase();\n    const merchant = tx._merchant.toLowerCase();\n    \n    const isExpected = expectedSources.some(source => \n      purpose.includes(source) || merchant.includes(source)\n    );\n    \n    if (!isExpected && tx.confidence !== 'high') {\n      const severity = tx._amt > 1000 ? 'warning' : 'info';\n      \n      alerts.push({\n        kind: 'unexpected_income',\n        severity,\n        source: tx._purpose || tx._merchant || 'Unknown',\n        amount: tx._amt,\n        date: tx.date,\n        category: tx.category,\n        confidence: tx.confidence,\n        message: `💡 **Unexpected income detected**\\nSource: ${tx._purpose || tx._merchant || 'Unknown'}\\nAmount: ${formatCurrency(tx._amt)} on ${formatDate(tx.date)}\\nCategory: ${tx.category}`\n      });\n    }\n  });\n\n// 3. THRESHOLD MONITORING\nconst sheetThreshold = Math.max(...expected.map(exp => Number(exp.threshold_min_month || 0)), 0);\nconst effectiveThreshold = Math.max(sheetThreshold, config.MONTHLY_MIN_THRESHOLD);\n\nif (effectiveThreshold > 0 && monthlyTotal < effectiveThreshold) {\n  const shortfall = effectiveThreshold - monthlyTotal;\n  const shortfallPercent = effectiveThreshold > 0 ? (shortfall / effectiveThreshold) * 100 : 0;\n  \n  alerts.push({\n    kind: 'threshold_drop',\n    severity: shortfallPercent > 50 ? 'critical' : shortfallPercent > 25 ? 'warning' : 'info',\n    threshold: effectiveThreshold,\n    monthly_total: monthlyTotal,\n    shortfall,\n    shortfall_percent: shortfallPercent,\n    message: `📉 **Income below threshold**\\nThis month: ${formatCurrency(monthlyTotal)}\\nThreshold: ${formatCurrency(effectiveThreshold)}\\nShortfall: ${formatCurrency(shortfall)} (${shortfallPercent.toFixed(1)}%)`\n  });\n}\n\n// 4. TREND ANALYSIS ALERTS\nif (trendData.trendDirection === 'decreasing' && trendData.trendChange < -20) {\n  alerts.push({\n    kind: 'trend_decline',\n    severity: 'warning',\n    trend_change: trendData.trendChange,\n    average_monthly: trendData.averageMonthlyIncome,\n    current_monthly: monthlyTotal,\n    message: `📉 **Income trend declining**\\nCurrent month: ${formatCurrency(monthlyTotal)}\\n3-month average: ${formatCurrency(trendData.averageMonthlyIncome)}\\nTrend: ${trendData.trendChange.toFixed(1)}% decline`\n  });\n}\n\n// 5. SUMMARY GENERATION\nconst summaryMessages = [];\n\nif (config.POST_SUMMARY) {\n  const categoryBreakdown = income.reduce((acc, tx) => {\n    acc[tx.category] = (acc[tx.category] || 0) + tx._amt;\n    return acc;\n  }, {});\n  \n  const sortedCategories = Object.entries(categoryBreakdown)\n    .sort((a, b) => b[1] - a[1])\n    .map(([category, amount]) => `• ${category}: ${formatCurrency(amount)}`);\n  \n  summaryMessages.push({\n    kind: 'summary',\n    severity: 'info',\n    monthly_total: monthlyTotal,\n    transaction_count: income.length,\n    category_breakdown: categoryBreakdown,\n    message: `🧾 **Income summary** (${currentMonth})\\nTotal: ${formatCurrency(monthlyTotal)} from ${income.length} transactions\\n${sortedCategories.join('\\n')}`\n  });\n}\n\n// Combine alerts and summaries\nconst allMessages = [...alerts, ...summaryMessages];\n\n// Apply noise reduction\nconst filteredMessages = allMessages.filter(msg => {\n  // Filter out low-severity info messages if there are many alerts\n  if (msg.severity === 'info' && alerts.length > 5) {\n    return msg.kind === 'summary' || msg.kind === 'deposit_received';\n  }\n  return true;\n});\n\nconsole.log(`🔔 Generated ${filteredMessages.length} alerts (${alerts.length} alerts + ${summaryMessages.length} summaries)`);\nif (filteredMessages.length > 0) {\n  console.log('Alert breakdown by severity:', \n    filteredMessages.reduce((acc, msg) => {\n      acc[msg.severity] = (acc[msg.severity] || 0) + 1;\n      return acc;\n    }, {})\n  );\n}\n\nreturn filteredMessages.map(msg => ({ json: msg }));"
+      },
+      "id": "2167497e-fe91-449d-a3c3-658d58ee366b",
+      "name": "Enhanced Alert Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -176,
+        -816
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "id": "73c25e2e-b922-4a43-ae56-f943dcb2f832",
+      "name": "Alert Priority Router",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        -1056
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "={{ $('Enhanced Input Adapter').item.json.SLACK_CHANNEL }}",
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "icon_emoji": "={{ $json.severity === 'critical' ? ':rotating_light:' : $json.severity === 'warning' ? ':warning:' : ':information_source:' }}"
+        },
+        "attachments": []
+      },
+      "id": "7d2e5f8d-c50e-4e2a-a8bc-49cc80cd1899",
+      "name": "Slack → Critical Alerts",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        144,
+        -1312
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "={{ $('Enhanced Input Adapter').item.json.SLACK_CHANNEL }}",
+        "text": "={{ $json.message }}",
+        "otherOptions": {
+          "icon_emoji": ":information_source:"
+        },
+        "attachments": []
+      },
+      "id": "22198bac-d6f8-469a-ba7b-59b3de374324",
+      "name": "Slack → Summary & Info",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        208,
+        -1136
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "income_alerts",
+          "cachedResultName": "Alerts Log"
+        },
+        "columns": {
+          "value": {
+            "id": "={{ $now() }}_{{ $json.kind }}_{{ Math.floor(Math.random() * 1000) }}",
+            "triggered_at": "={{ $now() }}",
+            "alert_type": "={{ $json.kind }}",
+            "severity": "={{ $json.severity }}",
+            "source": "={{ $json.source || '' }}",
+            "amount": "={{ $json.amount || $json.monthly_total || '' }}",
+            "expected_amount": "={{ $json.expected_amount || '' }}",
+            "variance": "={{ $json.variance || '' }}",
+            "date": "={{ $json.date || $json.expected_date || '' }}",
+            "message": "={{ $json.message }}",
+            "confidence": "={{ $json.confidence || '' }}",
+            "month": "={{ $('Enhanced Input Adapter').item.json.CURRENT_MONTH }}",
+            "resolved": "false"
+          },
+          "schema": [
+            {
+              "id": "id",
+              "type": "string",
+              "display": true,
+              "defaultMatch": true
+            },
+            {
+              "id": "triggered_at",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "alert_type",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "severity",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "source",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "amount",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "expected_amount",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "variance",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "date",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "message",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "confidence",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "month",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "resolved",
+              "type": "string",
+              "display": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3301ac07-1ee7-4bf6-9c9e-8b6a1111fce3",
+      "name": "Log All Alerts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        256,
+        -544
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Enhanced Input Adapter').item.json.UPDATE_BUDGET_PROJECTIONS }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "77dc6e41-57ef-4c69-bffd-3797a27dac84",
+      "name": "Should Update Budget?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -992
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Budget Integration Data Preparation\nconst config = $('Enhanced Input Adapter').first().json;\nconst income = $('Enhanced Income Categorization').all().map(i => i.json);\nconst alerts = $('Enhanced Alert Engine').all().map(i => i.json);\n\n// Calculate income projections for budget system\nconst monthlyTotal = income.reduce((sum, tx) => sum + (Number(tx._amt) || 0), 0);\nconst recurringIncome = income\n  .filter(tx => tx.recurring === true)\n  .reduce((sum, tx) => sum + (Number(tx._amt) || 0), 0);\n\nconst oneTimeIncome = monthlyTotal - recurringIncome;\n\n// Detect critical issues that affect budgeting\nconst criticalIssues = alerts.filter(alert => alert.severity === 'critical');\nconst hasIncomeShortfall = alerts.some(alert => alert.kind === 'threshold_drop' || alert.kind === 'income_missing');\n\n// Prepare budget integration payload\nconst budgetIntegrationData = {\n  month: config.CURRENT_MONTH,\n  total_income: monthlyTotal,\n  recurring_income: recurringIncome,\n  one_time_income: oneTimeIncome,\n  income_confidence: income.filter(tx => tx.confidence === 'high').length / Math.max(income.length, 1),\n  has_income_issues: criticalIssues.length > 0,\n  income_shortfall: hasIncomeShortfall,\n  recommendation: hasIncomeShortfall ? 'review_budget_targets' : 'maintain_current_budget',\n  last_updated: config.TIMESTAMP\n};\n\nconsole.log('💼 Budget Integration Data:', budgetIntegrationData);\nreturn budgetIntegrationData;"
+      },
+      "id": "7f5deced-cb8c-4386-8284-176c1e93aaa1",
+      "name": "Prepare Budget Integration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        -992
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $('Enhanced Input Adapter').item.json.UPDATE_GOAL_PROGRESS }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "be8f645d-f4b4-4591-91f1-809ae950b837",
+      "name": "Should Update Goals?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        480,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Goal Integration Data Preparation\nconst config = $('Enhanced Input Adapter').first().json;\nconst income = $('Enhanced Income Categorization').all().map(i => i.json);\n\n// Identify savings-related income\nconst savingsIncome = income.filter(tx => \n  tx.category === 'Interest' || \n  tx.category === 'Dividends' ||\n  tx._purpose.toLowerCase().includes('savings') ||\n  tx._purpose.toLowerCase().includes('investment')\n);\n\nconst totalSavingsIncome = savingsIncome.reduce((sum, tx) => sum + tx._amt, 0);\nconst totalIncome = income.reduce((sum, tx) => sum + tx._amt, 0);\n\n// Prepare goal progress data\nconst goalProgressData = {\n  month: config.CURRENT_MONTH,\n  total_income: totalIncome,\n  savings_income: totalSavingsIncome,\n  available_for_goals: totalIncome * 0.2, // Assume 20% can go to goals\n  income_stability: income.filter(tx => tx.confidence === 'high').length / Math.max(income.length, 1),\n  last_updated: config.TIMESTAMP,\n  trigger_goal_review: totalIncome > 0\n};\n\nconsole.log('🎯 Goal Integration Data:', goalProgressData);\nreturn goalProgressData;"
+      },
+      "id": "dfa6a1e6-36dd-4480-ac75-f80bdef2b752",
+      "name": "Prepare Goal Integration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        816,
+        -864
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Comprehensive Response Assembly for AI Agent\nconst config = $('Enhanced Input Adapter').first().json;\nconst income = $('Enhanced Income Categorization').all().map(i => i.json);\nconst alerts = $('Enhanced Alert Engine').all().map(i => i.json);\n\n// Separate alerts by type for structured response\nconst criticalAlerts = alerts.filter(alert => alert.severity === 'critical');\nconst warningAlerts = alerts.filter(alert => alert.severity === 'warning');\nconst infoAlerts = alerts.filter(alert => alert.severity === 'info');\n\n// Calculate key metrics\nconst totalIncome = income.reduce((sum, tx) => sum + tx._amt, 0);\nconst transactionCount = income.length;\nconst categoryBreakdown = income.reduce((acc, tx) => {\n  acc[tx.category] = (acc[tx.category] || 0) + tx._amt;\n  return acc;\n}, {});\n\n// Determine overall status\nlet overallStatus = 'healthy';\nif (criticalAlerts.length > 0) overallStatus = 'critical';\nelse if (warningAlerts.length > 0) overallStatus = 'warning';\nelse if (infoAlerts.length > 3) overallStatus = 'attention';\n\n// Generate recommendations\nconst recommendations = [];\nif (criticalAlerts.some(a => a.kind === 'income_missing')) {\n  recommendations.push('Follow up on missing expected income immediately');\n}\nif (warningAlerts.some(a => a.kind === 'threshold_drop')) {\n  recommendations.push('Review monthly budget targets - income below threshold');\n}\nif (alerts.some(a => a.kind === 'unexpected_income' && a.amount > 500)) {\n  recommendations.push('Consider allocating unexpected income to savings goals');\n}\nif (recommendations.length === 0) {\n  recommendations.push('Income tracking is on track - no immediate actions needed');\n}\n\n// Assemble final response\nconst response = {\n  status: overallStatus,\n  month: config.CURRENT_MONTH,\n  summary: {\n    total_income: totalIncome,\n    transaction_count: transactionCount,\n    category_breakdown: categoryBreakdown\n  },\n  alerts: {\n    critical: criticalAlerts.length,\n    warning: warningAlerts.length,\n    info: infoAlerts.length,\n    total: alerts.length\n  },\n  alert_details: alerts.map(alert => ({\n    type: alert.kind,\n    severity: alert.severity,\n    message: alert.message,\n    source: alert.source,\n    amount: alert.amount\n  })),\n  recommendations,\n  integrations: {\n    budget_updated: config.UPDATE_BUDGET_PROJECTIONS,\n    goals_updated: config.UPDATE_GOAL_PROGRESS,\n    cash_flow_synced: config.SYNC_CASH_FLOW\n  },\n  next_actions: recommendations,\n  processed_at: config.TIMESTAMP\n};\n\nconsole.log(`📊 Income Tracker Response: ${overallStatus} status with ${alerts.length} alerts`);\nreturn response;"
+      },
+      "id": "9e923f57-563c-4f2b-8a08-a671a0e3e4df",
+      "name": "Assemble AI Agent Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "19b14560-dee4-442f-bd37-5a878c81a4c1",
+      "name": "Return to Financial Agent",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        976,
+        -592
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# Enhanced Income Tracker & Alerts\n\n## 🎯 Key Features\n- **Smart Categorization**: 7 income types with confidence scoring\n- **Noise Reduction**: Priority-based alerts with variance thresholds\n- **Integration Ready**: Updates budget, goals, and cash flow systems\n- **Trend Analysis**: 3-month historical analysis with trend detection\n- **Multi-Channel Alerts**: Slack notifications with severity routing\n\n## 📊 Required Sheets\n- **Transactions**: Main transaction data (must have 'type'='income')\n- **expected_income**: Expected income configurations\n- **Alerts Log**: Complete alert history with severity tracking\n\n## ⚙️ Configuration Options\n- VARIANCE_THRESHOLD: €50 (min variance for alerts)\n- MIN_UNEXPECTED_AMOUNT: €100 (min for unexpected income alerts)\n- GRACE_DAYS: 2 (tolerance for late income)\n- DUPLICATE_WINDOW_HOURS: 24 (prevent duplicate alerts)\n\nSet your Google Sheets ID: **17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4**",
+        "height": 592,
+        "width": 680,
+        "color": 4
+      },
+      "id": "f2a5c964-8f3c-4b12-8785-c6bee7a68401",
+      "name": "📋 Workflow Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1056,
+        -2160
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "57e148b3-51e2-4cc2-8969-8769c4ea56db",
+      "name": "Schedule (Daily 08:00)2",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1216,
+        -704
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "9a4fd726-3b07-4f76-b980-442ea0ad786b",
+      "name": "Schedule (Daily 08:00)1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -592,
+        1296
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fromTrigger = $input.first()?.json || {}; return { SLACK_CHANNEL: fromTrigger.SLACK_CHANNEL || \"#finance-alerts\", POST_SUMMARY: fromTrigger.POST_SUMMARY ?? true, GRACE_DAYS: Number(fromTrigger.GRACE_DAYS ?? 2), MONTHLY_MIN_THRESHOLD: Number(fromTrigger.MONTHLY_MIN_THRESHOLD ?? 0) };"
+      },
+      "id": "2a59dd55-914a-4ca1-9dd2-1a875e4ecf73",
+      "name": "Input Adapter1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit"
+        }
+      },
+      "id": "7346323f-cd3d-4a7e-bef4-cd11d87146fc",
+      "name": "Get Income (current month)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -112,
+        976
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cur = new Date().toISOString().slice(0,7); const rules=[{cat:'Salary',rx:/(salary|payroll|wage|paycheck|net pay|pay day)/i},{cat:'Freelance',rx:/(invoice|freelance|contract|upwork|fiverr|stripe|paypal|client)/i},{cat:'Refunds',rx:/(refund|reversal|chargeback|cashback)/i},{cat:'Dividends',rx:/(dividend|payout|distribution)/i},{cat:'Interest',rx:/(interest|yield|savings|isa|apy)/i}]; return $input.all().filter(i=>{const x=i.json; return (x.month||'').slice(0,7)===cur && String(x.type).toLowerCase()==='income';}).map(i=>{const tx=i.json; const text=`${tx.purpose||''} ${tx.category||''}`; let assigned=tx.category&&['Salary','Freelance','Refunds','Dividends','Interest'].includes(tx.category)?tx.category:null; if(!assigned){const hit=rules.find(r=>r.rx.test(text)); assigned=hit?hit.cat:'Income-Other';} return { json:{...tx, category:assigned, _ts:tx.date, _amt:Number(tx.amount||0), _purpose:tx.purpose||'' } };});"
+      },
+      "id": "3e32aafc-ea40-4e61-ba42-207b9dc0dce1",
+      "name": "Categorize Income (Basic Rules)1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        128,
+        976
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit"
+        }
+      },
+      "id": "130d1cea-aa81-43b7-80bf-5720c120b5c5",
+      "name": "Get Expected Incomes (this month)1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -112,
+        1248
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg=$('Input Adapter1').first().json; let income=$('Categorize Income (Basic Rules)1').all().map(i=>i.json); let expected=$('Get Expected Incomes (this month)1').all().map(i=>i.json); const cur=new Date().toISOString().slice(0,7); expected=expected.filter(r=>(r.month||'').slice(0,7)===cur && (String(r.active||'true').toLowerCase()!=='false')); const today=new Date(); function withinDays(a,b,d){return Math.abs((a-b)/(1000*3600*24))<=d} function parseDate(s){const d=new Date(s); return isNaN(d)?null:d} const alerts=[]; const monthlyTotal=income.reduce((s,x)=>s+(Number(x._amt)||0),0); for(const row of expected){ const source=String(row.source||'').trim(); const expectedDate=parseDate(row.expected_date); const tol=Number(row.tolerance_days||cfg.GRACE_DAYS||0); const expectedAmt=Number(row.amount||0); let matched=null; if(source){ matched=income.find(tx=>(tx._purpose||'').toLowerCase().includes(source.toLowerCase()) && expectedDate && withinDays(parseDate(tx.date),expectedDate,tol)); } if(matched){ alerts.push({kind:'deposit_received',source,amount:matched._amt,date:matched.date,note:`Deposit received for ${source} (≈ expected ${expectedAmt||'n/a'})`}); } else if(expectedDate){ const cutoff=new Date(expectedDate.getTime()+tol*24*3600*1000); if(today>cutoff){ alerts.push({kind:'income_missing',source,expected_date:row.expected_date,note:`Expected income not detected for ${source} by ${row.expected_date} (+${tol}d)`}); } } } const expectedSources=expected.map(r=>String(r.source||'').toLowerCase()).filter(Boolean); for(const tx of income){ const p=(tx._purpose||'').toLowerCase(); if(!expectedSources.some(s=>p.includes(s))){ alerts.push({kind:'unexpected_income',source:tx._purpose||'Unknown',amount:tx._amt,date:tx.date}); } } const sheetThreshold=Math.max(...expected.map(r=>Number(r.threshold_min_month||0)),0); const minThreshold=Number(cfg.MONTHLY_MIN_THRESHOLD||0); const threshold=Math.max(sheetThreshold,minThreshold); if(threshold>0 && monthlyTotal<threshold){ alerts.push({kind:'threshold_drop',threshold,monthlyTotal,note:`Income this month €${monthlyTotal.toFixed(2)} < threshold €${threshold.toFixed(2)}`}); } function fmt(n){return `€${Number(n||0).toFixed(2)}`} function short(d){return (d||'').slice(0,10)} const msgs=[]; for(const a of alerts){ if(a.kind==='deposit_received'){ msgs.push({text:`✅ *Income received*: ${a.source}\\nAmount: ${fmt(a.amount)} on ${short(a.date)}`,kind:a.kind,...a}); } else if(a.kind==='income_missing'){ msgs.push({text:`⚠️ *Expected income missing*: ${a.source}\\nExpected by ${a.expected_date} (incl. grace).`,kind:a.kind,...a}); } else if(a.kind==='unexpected_income'){ msgs.push({text:`💡 *Unexpected income detected*\\nSource: ${a.source}\\nAmount: ${fmt(a.amount)} on ${short(a.date)}`,kind:a.kind,...a}); } else if(a.kind==='threshold_drop'){ msgs.push({text:`📉 *Income below threshold*\\nThis month: ${fmt(a.monthlyTotal)} < Threshold: ${fmt(a.threshold)}`,kind:a.kind,...a}); } } if(cfg.POST_SUMMARY){ const byCat={}; for(const tx of income){ byCat[tx.category]=(byCat[tx.category]||0)+(Number(tx._amt)||0); } const parts=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`• ${k}: ${fmt(v)}`); msgs.push({text:`🧾 *Income summary* (${cur})\\nTotal: ${fmt(monthlyTotal)}\\n${parts.join('\\n')}`,kind:'summary'}); } return msgs.map(m=>({json:m}));"
+      },
+      "id": "d2d7db91-4089-4c53-9f67-60fc3dcafd3d",
+      "name": "Compute Alerts1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $('Input Adapter1').item.json.SLACK_CHANNEL }}",
+        "text": "={{ $json.text }}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "e3fcde17-9ba6-4b71-bb29-047cec7883a5",
+      "name": "Slack → Post Messages1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        608,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "4964be4c-67e9-4bb8-8ddb-2471aaeff5fb",
+      "name": "Respond (when called as tool)1",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        848,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "income_alerts",
+          "cachedResultName": "income_alerts"
+        },
+        "columns": {
+          "value": {
+            "id": "={{ $json.id || $now() }}",
+            "date_triggered": "={{ $now() }}",
+            "alert_type": "={{ $json.kind }}",
+            "source": "={{ $json.source || '' }}",
+            "amount": "={{ $json.amount || '' }}",
+            "date": "={{ $json.date || $json.expected_date || '' }}",
+            "details": "={{ $json.note || $json.text || '' }}",
+            "month": "={{ new Date().toISOString().slice(0,7) }}"
+          },
+          "schema": [
+            {
+              "id": "id",
+              "type": "string",
+              "display": true,
+              "defaultMatch": true
+            },
+            {
+              "id": "date_triggered",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "alert_type",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "source",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "amount",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "date",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "details",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "month",
+              "type": "string",
+              "display": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "2cbca2d3-aedf-4b2e-91cc-2a127493051b",
+      "name": "Append Alert Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        608,
+        1248
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Sheets in SAME doc:\n• transactions (id, date, type, month, amount, purpose, category)\n• expected_income (month, source, expected_date, amount, tolerance_days, account, active)\n• income_alerts (id, date_triggered, alert_type, source, amount, date, details, month)\nSet the Sheet URL in each Google Sheets node before running.",
+        "height": 260,
+        "width": 680,
+        "color": 6
+      },
+      "id": "b7762b10-ff53-4269-b6f4-231ca9a03fb1",
+      "name": "Sticky — Sheets & Schema",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "content": "Sheets in SAME doc:\n• transactions (id, date, type, month, amount, purpose, category)\n• expected_income (month, source, expected_date, amount, tolerance_days, account, active)\n• income_alerts (id, date_triggered, alert_type, source, amount, date, details, month)\nSet the Sheet URL in each Google Sheets node before running.",
+        "height": 260,
+        "width": 680,
+        "color": 6
+      },
+      "id": "c635d2c2-9bca-4010-9f95-b7d0a7f53bd4",
+      "name": "Sticky — Sheets & Schema1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "income_alerts",
+          "cachedResultName": "income_alerts"
+        },
+        "columns": {
+          "value": {
+            "id": "={{ $json.id || $now() }}",
+            "date_triggered": "={{ $now() }}",
+            "alert_type": "={{ $json.kind }}",
+            "source": "={{ $json.source || '' }}",
+            "amount": "={{ $json.amount || '' }}",
+            "date": "={{ $json.date || $json.expected_date || '' }}",
+            "details": "={{ $json.note || $json.text || '' }}",
+            "month": "={{ new Date().toISOString().slice(0,7) }}"
+          },
+          "schema": [
+            {
+              "id": "id",
+              "type": "string",
+              "display": true,
+              "defaultMatch": true
+            },
+            {
+              "id": "date_triggered",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "alert_type",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "source",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "amount",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "date",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "details",
+              "type": "string",
+              "display": true
+            },
+            {
+              "id": "month",
+              "type": "string",
+              "display": true
+            }
+          ],
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "id"
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "3ddb0eda-fd4a-485c-820e-701c8a46cdc3",
+      "name": "Append Alert Row1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        432,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c50b40e3-bb74-4f45-8424-e7363a8c6804",
+      "name": "Respond (when called as tool)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        672,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "channel": "={{ $('Input Adapter').item.json.SLACK_CHANNEL }}",
+        "text": "={{ $json.text }}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "e467220b-0e6c-4dce-b01e-5a71d9bf9eb0",
+      "name": "Slack → Post Messages",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        432,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg=$('Input Adapter').first().json;const income=$('Categorize Income (Basic Rules)').all().map(i=>i.json);const expected=$('Get Expected Incomes (this month)').all().map(i=>i.json);const today=new Date();function withinDays(a,b,d){return Math.abs((a-b)/(1000*3600*24))<=d}function parseDate(s){const d=new Date(s);return isNaN(d)?null:d}const alerts=[];const monthlyTotal=income.reduce((s,x)=>s+(Number(x._amt)||0),0);for(const row of expected){const source=String(row.source||'').trim();const expectedDate=parseDate(row.expected_date);const tol=Number(row.tolerance_days||cfg.GRACE_DAYS||0);const expectedAmt=Number(row.amount||0);let matched=null;if(source){matched=income.find(tx=>(tx._purpose||'').toLowerCase().includes(source.toLowerCase())&&expectedDate&&withinDays(parseDate(tx.date),expectedDate,tol))}if(matched){alerts.push({kind:'deposit_received',source,amount:matched._amt,date:matched.date,note:`Deposit received for ${source} (≈ expected ${expectedAmt||'n/a'})`})}else if(expectedDate){const cutoff=new Date(expectedDate.getTime()+tol*24*3600*1000);if(today>cutoff){alerts.push({kind:'income_missing',source,expected_date:row.expected_date,note:`Expected income not detected for ${source} by ${row.expected_date} (+${tol}d)`})}}}const expectedSources=expected.map(r=>String(r.source||'').toLowerCase()).filter(Boolean);for(const tx of income){const p=(tx._purpose||'').toLowerCase();if(!expectedSources.some(s=>p.includes(s))){alerts.push({kind:'unexpected_income',source:tx._purpose||'Unknown',amount:tx._amt,date:tx.date})}}const sheetThreshold=Math.max(...expected.map(r=>Number(r.threshold_min_month||0)),0);const minThreshold=Number(cfg.MONTHLY_MIN_THRESHOLD||0);const threshold=Math.max(sheetThreshold,minThreshold);if(threshold>0&&monthlyTotal<threshold){alerts.push({kind:'threshold_drop',threshold,monthlyTotal,note:`Income this month €${monthlyTotal.toFixed(2)} < threshold €${threshold.toFixed(2)}`})}function fmt(n){return `€${Number(n||0).toFixed(2)}`}function short(d){return (d||'').slice(0,10)}const msgs=[];for(const a of alerts){if(a.kind==='deposit_received'){msgs.push({text:`✅ *Income received*: ${a.source}\\nAmount: ${fmt(a.amount)} on ${short(a.date)}`,kind:a.kind,...a})}else if(a.kind==='income_missing'){msgs.push({text:`⚠️ *Expected income missing*: ${a.source}\\nExpected by ${a.expected_date} (incl. grace).`,kind:a.kind,...a})}else if(a.kind==='unexpected_income'){msgs.push({text:`💡 *Unexpected income detected*\\nSource: ${a.source}\\nAmount: ${fmt(a.amount)} on ${short(a.date)}`,kind:a.kind,...a})}else if(a.kind==='threshold_drop'){msgs.push({text:`📉 *Income below threshold*\\nThis month: ${fmt(a.monthlyTotal)} < Threshold: ${fmt(a.threshold)}`,kind:a.kind,...a})}}if(cfg.POST_SUMMARY){const byCat={};for(const tx of income){byCat[tx.category]=(byCat[tx.category]||0)+(Number(tx._amt)||0)}const parts=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`• ${k}: ${fmt(v)}`);msgs.push({text:`🧾 *Income summary* (${new Date().toISOString().slice(0,7)})\\nTotal: ${fmt(monthlyTotal)}\\n${parts.join('\\n')}`,kind:'summary'})}return msgs.map(m=>({json:m}));"
+      },
+      "id": "7c6c76b8-82ef-4bc7-a07a-be1d188b2673",
+      "name": "Compute Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        272
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "lookup",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit"
+        }
+      },
+      "id": "975c891d-50a9-44bc-97a5-7b23bb07449d",
+      "name": "Get Expected Incomes (this month)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -288,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const rules=[{cat:'Salary',rx:/(salary|payroll|wage|paycheck|net pay|pay day)/i},{cat:'Freelance',rx:/(invoice|freelance|contract|upwork|fiverr|stripe|paypal|client)/i},{cat:'Refunds',rx:/(refund|reversal|chargeback|cashback)/i},{cat:'Dividends',rx:/(dividend|payout|distribution)/i},{cat:'Interest',rx:/(interest|yield|savings|isa|apy)/i}];return $input.all().map(i=>{const tx=i.json;const text=`${tx.purpose||''} ${tx.category||''}`;let assigned=tx.category&&['Salary','Freelance','Refunds','Dividends','Interest'].includes(tx.category)?tx.category:null;if(!assigned){const hit=rules.find(r=>r.rx.test(text));assigned=hit?hit.cat:'Income-Other';}return{json:{...tx,category:assigned,_ts:tx.date,_amt:Number(tx.amount||0),_purpose:tx.purpose||''}}});"
+      },
+      "id": "89942c0c-79dc-46f1-b68a-a3a3d73fc5c6",
+      "name": "Categorize Income (Basic Rules)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "https://docs.google.com/spreadsheets/d/REPLACE_WITH_YOUR_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "id": "d98a8879-393d-458c-b7b7-2f02b2e1fa7d",
+      "name": "Get Income (current month)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -288,
+        128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const fromTrigger = $input.first()?.json || {}; return { SLACK_CHANNEL: fromTrigger.SLACK_CHANNEL || \"#finance-alerts\", POST_SUMMARY: fromTrigger.POST_SUMMARY ?? true, GRACE_DAYS: Number(fromTrigger.GRACE_DAYS ?? 2), MONTHLY_MIN_THRESHOLD: Number(fromTrigger.MONTHLY_MIN_THRESHOLD ?? 0) };"
+      },
+      "id": "b9f6e427-d37e-4271-8814-ea711695a2ba",
+      "name": "Input Adapter",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -528,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "3fea0539-ef5a-4714-8094-b5e983ee45a0",
+      "name": "Schedule (Daily 08:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -768,
+        448
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "f4135d60-385c-4ec3-b2f9-e28d69f26c18",
+      "name": "When Called By Financial Agent",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -800,
+        272
+      ]
+    }
+  ],
+  "connections": {
+    "Enhanced Input Adapter": {
+      "main": [
+        [
+          {
+            "node": "Get Current Month Income",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Historical Income (3 months)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Expected Income (Current Month)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Current Month Income": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Income Categorization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Historical Income (3 months)": {
+      "main": [
+        [
+          {
+            "node": "Historical Trend Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Income Categorization": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Alert Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Expected Income (Current Month)": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Alert Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Historical Trend Analysis": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Alert Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Alert Engine": {
+      "main": [
+        [
+          {
+            "node": "Alert Priority Router",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log All Alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Should Update Budget?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Should Update Goals?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Assemble AI Agent Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Priority Router": {
+      "main": [
+        [
+          {
+            "node": "Slack → Critical Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Slack → Summary & Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Update Budget?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Budget Integration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Update Goals?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Goal Integration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble AI Agent Response": {
+      "main": [
+        [
+          {
+            "node": "Return to Financial Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (Daily 08:00)2": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Input Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (Daily 08:00)1": {
+      "main": [
+        [
+          {
+            "node": "Input Adapter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Adapter1": {
+      "main": [
+        [
+          {
+            "node": "Get Income (current month)1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Expected Incomes (this month)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Income (current month)1": {
+      "main": [
+        [
+          {
+            "node": "Categorize Income (Basic Rules)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Income (Basic Rules)1": {
+      "main": [
+        [
+          {
+            "node": "Compute Alerts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Expected Incomes (this month)1": {
+      "main": [
+        [
+          {
+            "node": "Compute Alerts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Alerts1": {
+      "main": [
+        [
+          {
+            "node": "Slack → Post Messages1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond (when called as tool)1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append Alert Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Alerts": {
+      "main": [
+        [
+          {
+            "node": "Respond (when called as tool)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append Alert Row1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Slack → Post Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Expected Incomes (this month)": {
+      "main": [
+        [
+          {
+            "node": "Compute Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Categorize Income (Basic Rules)": {
+      "main": [
+        [
+          {
+            "node": "Compute Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Income (current month)": {
+      "main": [
+        [
+          {
+            "node": "Categorize Income (Basic Rules)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Adapter": {
+      "main": [
+        [
+          {
+            "node": "Get Expected Incomes (this month)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Income (current month)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule (Daily 08:00)": {
+      "main": [
+        [
+          {
+            "node": "Input Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Called By Financial Agent": {
+      "main": [
+        [
+          {
+            "node": "Input Adapter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

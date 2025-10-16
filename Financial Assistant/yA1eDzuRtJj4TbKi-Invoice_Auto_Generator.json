@@ -1,0 +1,988 @@
+{
+  "name": "Invoice Auto-Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Normalize inputs from webhook body + support file_url/raw text.\nconst body = $json || {};\nconst fromWebhook = body.body || {};\nconst raw = { ...body, ...fromWebhook };\n\n// Binary handling: if a file was uploaded, n8n stores it on $binary under the field name used in the form.\nconst bin = $binary || {};\nconst binKey = Object.keys(bin)[0] || null; // first binary part if any\n\nconst sessionId = raw.sessionId || raw.session_id || `sess_${Date.now()}`;\nconst userId = raw.userId || raw.user_id || 'anonymous';\nconst fileUrl = raw.file_url || raw.fileUrl || '';\nconst text = raw.text || '';\n\nreturn {\n  sessionId,\n  userId,\n  fileUrl,\n  text,\n  ocrEnabled: false,\n  __hasBinary: !!binKey,\n  __binaryKey: binKey\n};"
+      },
+      "id": "8e6e8540-e23c-437b-8189-d1c169da1f15",
+      "name": "Normalize & Guard",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.text ? $json.text.length : 0 }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "larger"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "efb8fbc7-27c3-41e3-ac6c-d054f326b714",
+      "name": "IF text already present (>=200 chars)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -512,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.__hasBinary || !!$json.fileUrl }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7a5cf033-5c27-491a-bb70-b41f28bedb8e",
+      "name": "IF file provided (binary or URL)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// If binary exists, no work needed; ExtractFromFile can read the current item's binary.\n// This node is a no-op to keep the graph simple.\nreturn { __binaryPrepared: !!$('Normalize & Guard').first().json.__hasBinary };"
+      },
+      "id": "224b3511-db4d-46d0-8693-c8dd94b8866e",
+      "name": "Prepare Binary (noop)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.fileUrl }}",
+        "options": {}
+      },
+      "id": "46ceb560-fbc1-4668-9293-b979ec209ae9",
+      "name": "Download file (if file_url)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        16,
+        -336
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {}
+      },
+      "id": "90a49d9b-d938-4af7-9479-da1685311010",
+      "name": "Extract From File → PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        320,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Choose text source priority: existing text > PDF extracted text.\nconst env = $('Normalize & Guard').first().json;\nlet text = env.text || '';\nif (!text) {\n  const ex = $input.first().json || {};\n  text = ex.text || ex.data || ex.content || '';\n}\nreturn { text, sessionId: env.sessionId, userId: env.userId };"
+      },
+      "id": "78bae407-3ad6-44c8-ac6e-e59832a3adc5",
+      "name": "Collect Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ ($json.text || '').length }}",
+              "rightValue": 200,
+              "operator": {
+                "type": "number",
+                "operation": "smaller"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "ff69c08b-cfcc-4614-89f6-9dbe1374ed2f",
+      "name": "IF extracted text too short (<200)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        720,
+        -224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const t = $json.text || '';\nconst size = 3500, overlap = 200;\nconst chunks = [];\nfor (let i = 0; i < t.length; i += size - overlap) {\n  chunks.push(t.slice(i, i + size));\n}\nreturn chunks.map((c, idx) => ({ json: { chunk: c, idx } }));"
+      },
+      "id": "ebc28e94-9399-42d3-bc10-4ef08ce93eaf",
+      "name": "Chunk Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an invoice parser. Output STRICT JSON only with this exact schema:\\n{\\n  \"invoice_number\": \"string|null\",\\n  \"issue_date\": \"YYYY-MM-DD|null\",\\n  \"due_date\": \"YYYY-MM-DD|null\",\\n  \"seller\": {\"name\":\"string|null\",\"vat\":\"string|null\",\"address\":\"string|null\"},\\n  \"buyer\":  {\"name\":\"string|null\",\"vat\":\"string|null\",\"address\":\"string|null\"},\\n  \"currency\": \"string|null\",\\n  \"subtotal\": \"number|null\",\\n  \"tax\": \"number|null\",\\n  \"total\": \"number|null\",\\n  \"line_items\": [\\n    {\"description\":\"string\",\"qty\":\"number|null\",\"unit_price\":\"number|null\",\"amount\":\"number|null\",\"tax_rate\":\"number|null\"}\\n  ],\\n  \"confidence\": 0.0\\n}\\nRules:\\n- If a field is missing or unclear, set it to null.\\n- Dates must be YYYY-MM-DD (assume Europe/Vilnius if ambiguous).\\n- Numbers must be plain decimals (no currency symbols).\\n- Do NOT invent values; only extract what is clearly present.\\n- If values conflict across the text, choose the one closest to the TOTAL section.\\n\\nText to parse (chunk {{ $json.idx }}):\\n{{ $json.chunk }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "temperature": 0.1
+        }
+      },
+      "id": "58c29a3c-519b-4bff-8b35-f5137c72b1d6",
+      "name": "OpenAI → Parse chunk",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        1168,
+        -432
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "n0OHozj2D7X4K1XE",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge chunked JSONs by best confidence; dedupe line items by (desc, amount, qty)\nconst groups = $input.all().map(i => i.json.message?.content || i.json);\nconst arr = groups.map(g => ({\n  invoice_number: g.invoice_number ?? null,\n  issue_date: g.issue_date ?? null,\n  due_date: g.due_date ?? null,\n  seller: g.seller || {name:null,vat:null,address:null},\n  buyer: g.buyer || {name:null,vat:null,address:null},\n  currency: g.currency ?? null,\n  subtotal: g.subtotal ?? null,\n  tax: g.tax ?? null,\n  total: g.total ?? null,\n  line_items: Array.isArray(g.line_items) ? g.line_items : [],\n  confidence: typeof g.confidence === 'number' ? g.confidence : 0\n}));\n\nfunction pickBest(get) {\n  return arr.reduce((best, cur) => {\n    const bc = best?.confidence ?? 0, cc = cur?.confidence ?? 0;\n    return cc > bc && get(cur) ? cur : (best || cur);\n  }, null);\n}\n\nconst bestHdr = pickBest(x=>x.total || x.subtotal || x.invoice_number);\n\nconst itemKey = it => `${(it.description||'').trim()}|${it.amount ?? ''}|${it.qty ?? ''}`;\nconst itemsMap = new Map();\narr.forEach(a => (a.line_items||[]).forEach(li => { itemsMap.set(itemKey(li), li); }));\n\nconst merged = {\n  invoice_number: bestHdr?.invoice_number || null,\n  issue_date: bestHdr?.issue_date || null,\n  due_date: bestHdr?.due_date || null,\n  seller: bestHdr?.seller || {name:null,vat:null,address:null},\n  buyer: bestHdr?.buyer || {name:null,vat:null,address:null},\n  currency: bestHdr?.currency || null,\n  subtotal: bestHdr?.subtotal ?? null,\n  tax: bestHdr?.tax ?? null,\n  total: bestHdr?.total ?? null,\n  line_items: Array.from(itemsMap.values()),\n  confidence: Math.max(...arr.map(a => a.confidence||0), 0)\n};\n\nreturn { json: merged };"
+      },
+      "id": "6f91e9cf-4a17-491b-96e3-f39eb32df179",
+      "name": "Merge chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate & normalize; compute doc hash\nfunction toNum(n){ const x = (typeof n==='number')? n : parseFloat(String(n||'').replace(/[^0-9.-]/g,'')); return isFinite(x)? +x : null; }\nfunction toISO(d){ if(!d) return null; const t = new Date(d); if(isNaN(t)) return null; const y=t.getFullYear(), m=String(t.getMonth()+1).padStart(2,'0'), da=String(t.getDate()).padStart(2,'0'); return `${y}-${m}-${da}`; }\nconst j = $input.first().json || {};\n\nj.subtotal = toNum(j.subtotal);\nj.tax = toNum(j.tax);\nj.total = toNum(j.total);\nif (Array.isArray(j.line_items)) j.line_items = j.line_items.map(li=>({\n  description: String(li.description||'').slice(0,300),\n  qty: toNum(li.qty),\n  unit_price: toNum(li.unit_price),\n  amount: toNum(li.amount),\n  tax_rate: toNum(li.tax_rate)\n}));\n\nj.issue_date = toISO(j.issue_date);\nj.due_date = toISO(j.due_date);\n\nconst recalc = (j.line_items||[]).reduce((s,li)=> s + (li.amount||0), 0);\nconst hasItems = Array.isArray(j.line_items) && j.line_items.length>0;\nconst totalsMatch = hasItems && j.total!=null ? Math.abs((j.total||0) - recalc) < 0.02 : true;\n\nconst crypto = require('crypto');\nconst doc_hash = crypto.createHash('sha1').update(JSON.stringify(j)).digest('hex');\n\nreturn { json: { ...j, recomputed_total: hasItems? +recalc.toFixed(2): null, totals_match: totalsMatch, doc_hash } };"
+      },
+      "id": "a79273bf-b9a5-4dbc-8303-b81788338d67",
+      "name": "Validate & normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1888,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return { error: 'The uploaded file appears to be image-only or contains too little text. Enable OCR or upload a PDF with a text layer.' };"
+      },
+      "id": "e445dcd6-114c-4f5e-9d6f-d40c161f6314",
+      "name": "→ OCR not enabled (v1)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "e7a3b38b-e772-4f04-b8fe-356fc1a6fee4",
+      "name": "Respond (JSON)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        2112,
+        -432
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced input normalization with better error handling\nconst body = $json || {};\nconst fromWebhook = body.body || {};\nconst raw = { ...body, ...fromWebhook };\n\n// Binary handling with validation\nconst bin = $binary || {};\nconst binKey = Object.keys(bin)[0] || null;\nconst hasBinary = !!binKey;\n\n// Validate binary file type if present\nlet fileType = null;\nif (hasBinary && bin[binKey]) {\n  const mimeType = bin[binKey].mimeType || '';\n  const fileName = bin[binKey].fileName || '';\n  fileType = mimeType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf') ? 'pdf' : 'unknown';\n}\n\nconst sessionId = raw.sessionId || raw.session_id || `sess_${Date.now()}`;\nconst userId = raw.userId || raw.user_id || 'anonymous';\nconst fileUrl = raw.file_url || raw.fileUrl || '';\nconst text = (raw.text || '').trim();\n\n// Enhanced validation\nconst hasValidFile = hasBinary || (fileUrl && fileUrl.startsWith('http'));\nconst hasValidText = text.length >= 100; // Lower threshold for better UX\n\nreturn {\n  sessionId,\n  userId,\n  fileUrl,\n  text,\n  fileType,\n  hasValidFile,\n  hasValidText,\n  __hasBinary: hasBinary,\n  __binaryKey: binKey,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "88489082-ea99-43f3-89b7-138339c6dfae",
+      "name": "Enhanced Input Validation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        -1456
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hasValidText }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a5fd8766-e21b-419b-bccb-23cff5d99719",
+      "name": "IF sufficient text already present",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -1520
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.hasValidFile }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b880754e-8521-42d4-819b-5c52fa025e7b",
+      "name": "IF file provided",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        -1264
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced file download with error handling and retries\nconst fileUrl = $json.fileUrl;\nif (!fileUrl) {\n  throw new Error('No file URL provided');\n}\n\n// Validate URL format\nif (!fileUrl.startsWith('http://') && !fileUrl.startsWith('https://')) {\n  throw new Error('Invalid file URL format');\n}\n\nreturn { \n  fileUrl,\n  downloadAttempt: 1,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "941868cd-a748-4dc1-89b3-825528ebd8fd",
+      "name": "Prepare Download",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        -1424
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.fileUrl }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "8aa19e1e-24e1-4e35-bb63-944492fb1605",
+      "name": "Download File",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -80,
+        -1424
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle binary data - either from upload or download\nconst env = $('Enhanced Input Validation').first().json;\nif (env.__hasBinary) {\n  // Binary already present from upload\n  return { __binaryReady: true, source: 'upload' };\n} else {\n  // Binary from download\n  return { __binaryReady: true, source: 'download' };\n}"
+      },
+      "id": "bfc16521-b782-4155-99e4-d9531a7e834a",
+      "name": "Prepare Binary Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        -1216
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "maxPages": 50
+        }
+      },
+      "id": "700c4362-1925-4556-8064-f06e86a456d1",
+      "name": "Extract Text from PDF",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        128,
+        -1312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced text collection with quality checks\nconst env = $('Enhanced Input Validation').first().json;\nlet text = env.text || '';\n\n// If no existing text, get from extraction\nif (!text) {\n  const extracted = $input.first().json || {};\n  text = extracted.text || extracted.data || extracted.content || '';\n}\n\n// Clean and validate text\ntext = text.trim().replace(/\\s+/g, ' '); // Normalize whitespace\nconst wordCount = text.split(' ').length;\nconst hasInvoiceKeywords = /\\b(invoice|bill|receipt|total|amount|due|date)\\b/i.test(text);\n\nreturn { \n  text, \n  sessionId: env.sessionId, \n  userId: env.userId,\n  wordCount,\n  hasInvoiceKeywords,\n  textQuality: hasInvoiceKeywords && wordCount > 20 ? 'good' : 'poor'\n};"
+      },
+      "id": "71616c3c-cf88-47fe-b929-ec44a850d3df",
+      "name": "Collect & Validate Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        336,
+        -1312
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.textQuality }}",
+              "rightValue": "poor",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dd94ae4b-d81f-45b2-a5d0-8589247e8cc9",
+      "name": "IF text quality poor",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        528,
+        -1312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Smart chunking on logical boundaries\nconst text = $json.text || '';\nconst maxChunkSize = 4000;\nconst minOverlap = 150;\n\n// Try to split on logical boundaries first\nconst paragraphs = text.split(/\\n\\s*\\n/).filter(p => p.trim());\nconst chunks = [];\nlet currentChunk = '';\n\nfor (const paragraph of paragraphs) {\n  if (currentChunk.length + paragraph.length > maxChunkSize && currentChunk) {\n    chunks.push(currentChunk.trim());\n    // Keep some overlap for context\n    const words = currentChunk.split(' ');\n    currentChunk = words.slice(-Math.floor(minOverlap/6)).join(' ') + ' ' + paragraph;\n  } else {\n    currentChunk += (currentChunk ? '\\n\\n' : '') + paragraph;\n  }\n}\n\nif (currentChunk.trim()) {\n  chunks.push(currentChunk.trim());\n}\n\n// If no logical splits worked, fall back to character-based chunking\nif (chunks.length === 0) {\n  for (let i = 0; i < text.length; i += maxChunkSize - minOverlap) {\n    chunks.push(text.slice(i, i + maxChunkSize));\n  }\n}\n\n// Filter out very short chunks\nconst validChunks = chunks.filter(c => c.length > 100);\n\nreturn validChunks.map((chunk, idx) => ({ \n  json: { \n    chunk, \n    chunkIndex: idx, \n    totalChunks: validChunks.length,\n    chunkLength: chunk.length\n  } \n}));"
+      },
+      "id": "697e20cd-127c-48ba-ad48-0e4092902b8d",
+      "name": "Smart Text Chunking",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        -1520
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are an expert invoice parser. Extract data into STRICT JSON with this schema:\\n\\n{\\n  \"invoice_number\": \"string|null\",\\n  \"issue_date\": \"YYYY-MM-DD|null\",\\n  \"due_date\": \"YYYY-MM-DD|null\",\\n  \"seller\": {\\n    \"name\": \"string|null\",\\n    \"vat_number\": \"string|null\",\\n    \"address\": \"string|null\",\\n    \"email\": \"string|null\",\\n    \"phone\": \"string|null\"\\n  },\\n  \"buyer\": {\\n    \"name\": \"string|null\",\\n    \"vat_number\": \"string|null\",\\n    \"address\": \"string|null\",\\n    \"email\": \"string|null\",\\n    \"phone\": \"string|null\"\\n  },\\n  \"currency\": \"string|null\",\\n  \"subtotal\": \"number|null\",\\n  \"tax_amount\": \"number|null\",\\n  \"tax_rate\": \"number|null\",\\n  \"total\": \"number|null\",\\n  \"payment_terms\": \"string|null\",\\n  \"line_items\": [\\n    {\\n      \"description\": \"string\",\\n      \"quantity\": \"number|null\",\\n      \"unit_price\": \"number|null\",\\n      \"line_total\": \"number|null\",\\n      \"tax_rate\": \"number|null\"\\n    }\\n  ],\\n  \"confidence\": 0.95\\n}\\n\\nRULES:\\n- Extract ONLY what is clearly visible in the text\\n- For dates: Use YYYY-MM-DD format, assume current year if unclear\\n- For numbers: Extract as plain decimals (remove currency symbols, commas)\\n- For European number format (1.234,56): convert to 1234.56\\n- If multiple totals exist, prioritize the final/bottom-most one\\n- Set confidence 0.9+ only if you're very certain about key fields (total, invoice_number)\\n- Set confidence 0.5-0.8 for partial/unclear data\\n- Set confidence <0.5 for very poor quality text\\n\\nText chunk {{ $json.chunkIndex + 1 }}/{{ $json.totalChunks }}:\\n{{ $json.chunk }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {
+          "maxTokens": 1500,
+          "temperature": 0.05
+        }
+      },
+      "id": "e378bec6-9023-44e2-ba92-ea6f18164903",
+      "name": "AI Parse Chunk",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        976,
+        -1520
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "openAiApi": {
+          "id": "n0OHozj2D7X4K1XE",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced chunk merging with smart field selection\nconst chunks = $input.all().map(item => {\n  const content = item.json.message?.content || item.json;\n  return typeof content === 'string' ? JSON.parse(content) : content;\n});\n\n// Helper functions\nfunction selectBestValue(chunks, fieldPath, validator = null) {\n  const values = chunks.map(chunk => {\n    const value = fieldPath.split('.').reduce((obj, key) => obj?.[key], chunk);\n    const confidence = chunk.confidence || 0;\n    return { value, confidence, isValid: validator ? validator(value) : !!value };\n  }).filter(item => item.isValid);\n  \n  if (values.length === 0) return null;\n  return values.reduce((best, current) => \n    current.confidence > best.confidence ? current : best\n  ).value;\n}\n\nfunction isValidDate(date) {\n  return date && /^\\d{4}-\\d{2}-\\d{2}$/.test(date);\n}\n\nfunction isValidNumber(num) {\n  return typeof num === 'number' && isFinite(num) && num >= 0;\n}\n\nfunction isValidCurrency(curr) {\n  return curr && /^[A-Z]{3}$/.test(curr);\n}\n\n// Select best values for each field\nconst merged = {\n  invoice_number: selectBestValue(chunks, 'invoice_number'),\n  issue_date: selectBestValue(chunks, 'issue_date', isValidDate),\n  due_date: selectBestValue(chunks, 'due_date', isValidDate),\n  currency: selectBestValue(chunks, 'currency', isValidCurrency) || 'EUR',\n  subtotal: selectBestValue(chunks, 'subtotal', isValidNumber),\n  tax_amount: selectBestValue(chunks, 'tax_amount', isValidNumber),\n  tax_rate: selectBestValue(chunks, 'tax_rate', isValidNumber),\n  total: selectBestValue(chunks, 'total', isValidNumber),\n  payment_terms: selectBestValue(chunks, 'payment_terms'),\n  seller: {\n    name: selectBestValue(chunks, 'seller.name'),\n    vat_number: selectBestValue(chunks, 'seller.vat_number'),\n    address: selectBestValue(chunks, 'seller.address'),\n    email: selectBestValue(chunks, 'seller.email'),\n    phone: selectBestValue(chunks, 'seller.phone')\n  },\n  buyer: {\n    name: selectBestValue(chunks, 'buyer.name'),\n    vat_number: selectBestValue(chunks, 'buyer.vat_number'),\n    address: selectBestValue(chunks, 'buyer.address'),\n    email: selectBestValue(chunks, 'buyer.email'),\n    phone: selectBestValue(chunks, 'buyer.phone')\n  }\n};\n\n// Merge line items with smart deduplication\nconst allItems = chunks.flatMap(chunk => chunk.line_items || []);\nconst itemsMap = new Map();\n\nallItems.forEach(item => {\n  if (!item.description) return;\n  \n  const key = `${item.description.toLowerCase().trim()}|${item.quantity || 0}|${item.unit_price || 0}`;\n  const existing = itemsMap.get(key);\n  \n  if (!existing || (item.line_total && !existing.line_total)) {\n    itemsMap.set(key, {\n      description: item.description.trim(),\n      quantity: isValidNumber(item.quantity) ? item.quantity : null,\n      unit_price: isValidNumber(item.unit_price) ? item.unit_price : null,\n      line_total: isValidNumber(item.line_total) ? item.line_total : null,\n      tax_rate: isValidNumber(item.tax_rate) ? item.tax_rate : null\n    });\n  }\n});\n\nmerged.line_items = Array.from(itemsMap.values());\n\n// Calculate overall confidence\nconst avgConfidence = chunks.reduce((sum, c) => sum + (c.confidence || 0), 0) / chunks.length;\nmerged.confidence = Math.round(avgConfidence * 100) / 100;\n\nreturn { json: merged };"
+      },
+      "id": "c4991b96-1a0b-48ac-a0de-0fcc75d76224",
+      "name": "Smart Merge Chunks",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        -1520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced validation with European number format support and calculations\nconst invoice = $input.first().json || {};\n\n// Enhanced number parsing for European formats\nfunction parseNumber(value) {\n  if (typeof value === 'number') return isFinite(value) ? value : null;\n  if (!value) return null;\n  \n  let str = String(value).trim();\n  if (!str) return null;\n  \n  // Handle European format: 1.234,56 -> 1234.56\n  if (/^\\d{1,3}(\\.\\d{3})*,\\d{2}$/.test(str)) {\n    str = str.replace(/\\./g, '').replace(',', '.');\n  }\n  // Handle US format with commas: 1,234.56 -> 1234.56\n  else if (/^\\d{1,3}(,\\d{3})*\\.\\d{2}$/.test(str)) {\n    str = str.replace(/,/g, '');\n  }\n  // Remove any remaining non-numeric characters except decimal point\n  else {\n    str = str.replace(/[^0-9.-]/g, '');\n  }\n  \n  const num = parseFloat(str);\n  return isFinite(num) && num >= 0 ? Math.round(num * 100) / 100 : null;\n}\n\n// Enhanced date parsing\nfunction parseDate(dateStr) {\n  if (!dateStr) return null;\n  \n  // Try common European formats first\n  const patterns = [\n    /^(\\d{1,2})\\.(\\d{1,2})\\.(\\d{4})$/, // DD.MM.YYYY\n    /^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/, // DD/MM/YYYY or MM/DD/YYYY\n    /^(\\d{4})-(\\d{1,2})-(\\d{1,2})$/    // YYYY-MM-DD\n  ];\n  \n  for (const pattern of patterns) {\n    const match = String(dateStr).match(pattern);\n    if (match) {\n      let [, p1, p2, p3] = match;\n      let year, month, day;\n      \n      if (pattern === patterns[2]) { // YYYY-MM-DD\n        [year, month, day] = [p1, p2, p3];\n      } else { // Assume DD.MM.YYYY for European context\n        [day, month, year] = [p1, p2, p3];\n      }\n      \n      const date = new Date(year, month - 1, day);\n      if (!isNaN(date)) {\n        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;\n      }\n    }\n  }\n  \n  return null;\n}\n\n// Parse and validate all fields\nconst normalized = {\n  invoice_number: invoice.invoice_number || null,\n  issue_date: parseDate(invoice.issue_date),\n  due_date: parseDate(invoice.due_date),\n  seller: {\n    name: invoice.seller?.name || null,\n    vat_number: invoice.seller?.vat_number || invoice.seller?.vat || null,\n    address: invoice.seller?.address || null,\n    email: invoice.seller?.email || null,\n    phone: invoice.seller?.phone || null\n  },\n  buyer: {\n    name: invoice.buyer?.name || null,\n    vat_number: invoice.buyer?.vat_number || invoice.buyer?.vat || null,\n    address: invoice.buyer?.address || null,\n    email: invoice.buyer?.email || null,\n    phone: invoice.buyer?.phone || null\n  },\n  currency: invoice.currency || 'EUR',\n  subtotal: parseNumber(invoice.subtotal),\n  tax_amount: parseNumber(invoice.tax_amount || invoice.tax),\n  tax_rate: parseNumber(invoice.tax_rate),\n  total: parseNumber(invoice.total),\n  payment_terms: invoice.payment_terms || null,\n  line_items: [],\n  confidence: Math.max(0, Math.min(1, invoice.confidence || 0))\n};\n\n// Parse line items\nif (Array.isArray(invoice.line_items)) {\n  normalized.line_items = invoice.line_items.map(item => ({\n    description: String(item.description || '').slice(0, 500),\n    quantity: parseNumber(item.quantity || item.qty),\n    unit_price: parseNumber(item.unit_price),\n    line_total: parseNumber(item.line_total || item.amount),\n    tax_rate: parseNumber(item.tax_rate)\n  })).filter(item => item.description.length > 0);\n}\n\n// Enhanced calculations and validation\nconst hasLineItems = normalized.line_items.length > 0;\nlet calculatedSubtotal = 0;\nlet calculatedTotal = 0;\n\nif (hasLineItems) {\n  calculatedSubtotal = normalized.line_items.reduce((sum, item) => {\n    return sum + (item.line_total || (item.quantity * item.unit_price) || 0);\n  }, 0);\n  calculatedSubtotal = Math.round(calculatedSubtotal * 100) / 100;\n  \n  calculatedTotal = calculatedSubtotal + (normalized.tax_amount || 0);\n  calculatedTotal = Math.round(calculatedTotal * 100) / 100;\n}\n\n// Validation flags\nconst validation = {\n  has_required_fields: !!(normalized.invoice_number || normalized.total),\n  has_seller_info: !!(normalized.seller.name || normalized.seller.vat_number),\n  has_buyer_info: !!(normalized.buyer.name || normalized.buyer.vat_number),\n  has_line_items: hasLineItems,\n  subtotal_matches: !normalized.subtotal || Math.abs((normalized.subtotal || 0) - calculatedSubtotal) < 0.05,\n  total_matches: !normalized.total || Math.abs((normalized.total || 0) - calculatedTotal) < 0.05,\n  dates_logical: !normalized.issue_date || !normalized.due_date || \n                 new Date(normalized.due_date) >= new Date(normalized.issue_date)\n};\n\n// Generate document hash for deduplication\nconst crypto = require('crypto');\nconst hashInput = JSON.stringify({\n  inv: normalized.invoice_number,\n  total: normalized.total,\n  seller: normalized.seller.name,\n  date: normalized.issue_date\n});\nconst doc_hash = crypto.createHash('sha256').update(hashInput).digest('hex').slice(0, 16);\n\n// Calculate quality score\nconst qualityChecks = Object.values(validation);\nconst quality_score = qualityChecks.filter(Boolean).length / qualityChecks.length;\n\nreturn { \n  json: {\n    ...normalized,\n    calculated_subtotal: hasLineItems ? calculatedSubtotal : null,\n    calculated_total: hasLineItems ? calculatedTotal : null,\n    validation,\n    quality_score: Math.round(quality_score * 100) / 100,\n    doc_hash,\n    processed_at: new Date().toISOString()\n  }\n};"
+      },
+      "id": "5e1bcf92-44df-4e66-ba44-ee3c3e1cb115",
+      "name": "Enhanced Validation & Calculation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1712,
+        -1520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced error response with helpful details\nconst env = $('Enhanced Input Validation').first().json;\nreturn { \n  error: 'Insufficient text content for parsing',\n  details: 'The file contains too little text or appears to be image-based.',\n  suggestions: [\n    'Try a different PDF with selectable text',\n    'Check if the file is a scanned document',\n    'Ensure the file is not corrupted'\n  ],\n  file_info: {\n    type: env.fileType,\n    has_text: env.hasValidText,\n    word_count: env.text ? env.text.split(' ').length : 0\n  },\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "be0ab87a-c39f-4192-b743-f4d55c38af09",
+      "name": "Return Helpful Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -1248
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle missing file scenario\nreturn {\n  error: 'No valid input provided',\n  details: 'Please provide either text content (min 100 characters) or upload a PDF file.',\n  required_input: {\n    text: 'Plain text content of the invoice',\n    file: 'PDF file upload or file_url parameter'\n  },\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "accbbb37-11d9-459a-99e2-b096768b7a52",
+      "name": "No Input Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -992
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle download failures with retry logic\nconst error = $json.error || {};\nreturn {\n  error: 'File download failed',\n  details: `Unable to download file from provided URL: ${error.message || 'Unknown error'}`,\n  suggestions: [\n    'Check if the URL is accessible',\n    'Ensure the file is publicly available',\n    'Try uploading the file directly instead'\n  ],\n  timestamp: new Date().toISOString()\n};"
+      },
+      "id": "ec0a81e3-21e3-4f30-bcb0-795e12ecce49",
+      "name": "Download Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -1696
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "93397caa-381f-4b76-9f1b-8ba5b82265ae",
+      "name": "Return Results",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        -1520
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "3abfcd3a-8292-40f7-96c2-b7988819807c",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1264,
+        -1456
+      ],
+      "id": "99c59e52-693c-48a5-8822-1c1497f43f73",
+      "name": "Webhook",
+      "webhookId": "3abfcd3a-8292-40f7-96c2-b7988819807c"
+    },
+    {
+      "parameters": {
+        "content": "simple version",
+        "height": 832,
+        "width": 3408,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -976,
+        -624
+      ],
+      "id": "4e272b67-cc6e-4cab-a6a7-21ac25a06c48",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "webhook version",
+        "height": 1088,
+        "width": 3600,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1408,
+        -1904
+      ],
+      "id": "b2515891-cba0-4bd5-bc5a-5699f7edfd24",
+      "name": "Sticky Note1"
+    }
+  ],
+  "connections": {
+    "Normalize & Guard": {
+      "main": [
+        [
+          {
+            "node": "IF text already present (>=200 chars)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF file provided (binary or URL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF text already present (>=200 chars)": {
+      "main": [
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF file provided (binary or URL)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF file provided (binary or URL)": {
+      "main": [
+        [
+          {
+            "node": "Download file (if file_url)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Binary (noop)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Binary (noop)": {
+      "main": [
+        [
+          {
+            "node": "Extract From File → PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file (if file_url)": {
+      "main": [
+        [
+          {
+            "node": "Extract From File → PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract From File → PDF": {
+      "main": [
+        [
+          {
+            "node": "Collect Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Text": {
+      "main": [
+        [
+          {
+            "node": "IF extracted text too short (<200)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF extracted text too short (<200)": {
+      "main": [
+        [
+          {
+            "node": "→ OCR not enabled (v1)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Chunk Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunk Text": {
+      "main": [
+        [
+          {
+            "node": "OpenAI → Parse chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI → Parse chunk": {
+      "main": [
+        [
+          {
+            "node": "Merge chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge chunks": {
+      "main": [
+        [
+          {
+            "node": "Validate & normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & normalize": {
+      "main": [
+        [
+          {
+            "node": "Respond (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "→ OCR not enabled (v1)": {
+      "main": [
+        [
+          {
+            "node": "Respond (JSON)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Input Validation": {
+      "main": [
+        [
+          {
+            "node": "IF sufficient text already present",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "IF file provided",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF sufficient text already present": {
+      "main": [
+        [
+          {
+            "node": "Smart Text Chunking",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF file provided",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF file provided": {
+      "main": [
+        [
+          {
+            "node": "Prepare Binary Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Input Error",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Download": {
+      "main": [
+        [
+          {
+            "node": "Download File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download File": {
+      "main": [
+        [
+          {
+            "node": "Extract Text from PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Binary Data": {
+      "main": [
+        [
+          {
+            "node": "Extract Text from PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Text from PDF": {
+      "main": [
+        [
+          {
+            "node": "Collect & Validate Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect & Validate Text": {
+      "main": [
+        [
+          {
+            "node": "IF text quality poor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF text quality poor": {
+      "main": [
+        [
+          {
+            "node": "Return Helpful Error",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Smart Text Chunking",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Smart Text Chunking": {
+      "main": [
+        [
+          {
+            "node": "AI Parse Chunk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Parse Chunk": {
+      "main": [
+        [
+          {
+            "node": "Smart Merge Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Smart Merge Chunks": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Validation & Calculation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Validation & Calculation": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Return Helpful Error": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "No Input Error": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Return Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Input Validation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -1,0 +1,774 @@
+{
+  "name": "Recurring Anomaly Detection",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// Combined Anomaly Detection - Duplicates + Spikes\nconst items = $input.all();\nconst anomalies = [];\n\n// 1. DUPLICATE DETECTION\nconst seen = new Set();\nfor (const item of items) {\n  const key = `${item.json['User ID']}_${item.json.Date}_${item.json.Amount}_${item.json.Merchant}`;\n  if (seen.has(key)) {\n    anomalies.push({ json: { Type: \"Duplicate\", ...item.json } });\n  } else {\n    seen.add(key);\n  }\n}\n\n// 2. SPIKE DETECTION\nconst grouped = {};\n// Group by category and calculate amounts\nfor (const tx of items) {\n  const cat = tx.json.Category || \"Other\";\n  if (!grouped[cat]) grouped[cat] = [];\n  grouped[cat].push(Math.abs(parseFloat(tx.json.Amount)));\n}\n\n// Find spikes (3x category average)\nfor (const tx of items) {\n  const cat = tx.json.Category || \"Other\";\n  const avg = grouped[cat].reduce((a, b) => a + b, 0) / grouped[cat].length;\n  const amount = Math.abs(parseFloat(tx.json.Amount));\n  \n  if (amount > avg * 3) {\n    anomalies.push({ json: { Type: \"Spike\", ...tx.json, AvgForCategory: avg.toFixed(2) } });\n  }\n}\n\nreturn anomalies;"
+      },
+      "id": "135f6c74-4d6e-44fb-b23e-37fa5553b62d",
+      "name": "3. Detect Duplicates + Spikes1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Detect Drifts - Identify categories gradually increasing spend month-to-month\nconst items = $input.all();\nconst grouped = {};\n\n// Group by category and month\nfor (const tx of items) {\n  const d = new Date(tx.json.Date);\n  const month = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}`;\n  const cat = tx.json.Category || \"Other\";\n  \n  if (!grouped[cat]) grouped[cat] = {};\n  grouped[cat][month] = (grouped[cat][month] || 0) + Math.abs(parseFloat(tx.json.Amount));\n}\n\nconst anomalies = [];\n\n// Check for month-over-month increases > 50%\nfor (const cat in grouped) {\n  const months = Object.keys(grouped[cat]).sort();\n  \n  for (let i = 1; i < months.length; i++) {\n    const prev = grouped[cat][months[i-1]];\n    const curr = grouped[cat][months[i]];\n    \n    if (curr > prev * 1.5) {\n      anomalies.push({ \n        json: { \n          Type: \"Drift\", \n          Category: cat, \n          Month: months[i], \n          Amount: curr.toFixed(2), \n          PrevMonth: prev.toFixed(2),\n          Date: months[i] + '-01'\n        } \n      });\n    }\n  }\n}\n\nreturn anomalies;"
+      },
+      "id": "5ec20e88-57d5-4418-93b2-9f53e1c7c12d",
+      "name": "4. Detect Drifts1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex",
+        "options": {}
+      },
+      "id": "c0bdb965-7141-4248-aa71-6da92df225f7",
+      "name": "5. Merge Anomalies1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $items().length }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "54f35325-6ee3-4a99-86a1-b78978817342",
+      "name": "6. IF Any Anomalies?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format human-readable alert messages\nreturn $input.all().map(item => ({\n  json: {\n    Message: `⚠️ Anomaly Detected [${item.json.Type}] - ${item.json.Category || item.json.Merchant || 'Unknown'} | Amount: €${Math.abs(item.json.Amount)} | Date: ${item.json.Date}`,\n    Details: item.json\n  }\n}));"
+      },
+      "id": "1378fd55-924f-4748-8c5f-1a4324091b61",
+      "name": "7. Format Alerts1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#finance-alerts",
+        "text": "={{ $json.Message }}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "6e40fcfa-f87b-4f9a-a632-8f76121021ca",
+      "name": "8. Send Slack Alert1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1296,
+        -96
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1682341580,
+          "mode": "list",
+          "cachedResultName": "Alerts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1682341580"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Amount": "={{ $json.Details.Amount || '' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alert Type",
+              "displayName": "Alert Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Category/Name",
+              "displayName": "Category/Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7cc4e019-a2f1-4e8a-a89a-11dce6cc978e",
+      "name": "9. Log Alerts1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1296,
+        96
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "new-transaction",
+        "options": {}
+      },
+      "name": "Webhook Trigger (New Transaction)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        32,
+        80
+      ],
+      "id": "f5702bc8-575e-4842-8223-bf2cf78dbab7",
+      "webhookId": "3c64c858-8d05-4951-a851-b6ddac48c761"
+    },
+    {
+      "parameters": {},
+      "id": "46b89bf0-952c-4ecb-9846-ad13f04b5a91",
+      "name": "1. Schedule Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        32,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "options": {}
+      },
+      "id": "3bae6001-4402-40d0-a204-2e9aeab6514f",
+      "name": "2. Fetch Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        256,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-transaction",
+        "options": {}
+      },
+      "id": "d3a426c2-625d-4d4e-8d82-8c44897b8859",
+      "name": "Webhook: New Transaction",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        48,
+        624
+      ],
+      "webhookId": "2bc05208-0c76-4a46-aa2c-8d2552ddeca7"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "options": {}
+      },
+      "id": "6058db59-fee5-4ea5-80cd-f4b2a4876cac",
+      "name": "Fetch Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        368,
+        624
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Duplicate detection\nconst txs = $input.all().map(i=>i.json);\nconst seen = new Set();\nconst duplicates = [];\n\nfor (let tx of txs) {\n  const key = `${tx.UserID}_${tx.Date}_${tx.Amount}_${tx.Merchant}`;\n  if (seen.has(key)) {\n    duplicates.push({ json: { ...tx, AnomalyType: 'Duplicate' }});\n  } else {\n    seen.add(key);\n  }\n}\n\nreturn duplicates;"
+      },
+      "id": "eaee6385-26c4-4bd9-9028-704c14ccaded",
+      "name": "Duplicate Detection",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        656,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Spike detection: >3x category average\nconst txs = $input.all().map(i=>i.json);\nconst spikes = [];\n\nconst byCategory = {};\nfor (let tx of txs) {\n  if (!byCategory[tx.Category]) byCategory[tx.Category] = [];\n  byCategory[tx.Category].push(parseFloat(tx.Amount));\n}\n\nfor (let tx of txs) {\n  const avg = byCategory[tx.Category].reduce((a,b)=>a+b,0) / byCategory[tx.Category].length;\n  if (parseFloat(tx.Amount) > avg*3) {\n    spikes.push({ json: { ...tx, AnomalyType: 'Spike', Avg: avg }});\n  }\n}\n\nreturn spikes;"
+      },
+      "id": "b87599f9-d3e3-4465-ac6b-fc284ea7d667",
+      "name": "Spending Spike Detection",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        656,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Drift detection: MoM increase >50%\nconst txs = $input.all().map(i=>i.json);\nconst now = new Date();\nconst currentMonth = now.getMonth();\nconst prevMonth = (currentMonth+11)%12;\nconst currentYear = now.getFullYear();\n\nconst byCategory = {};\nfor (let tx of txs) {\n  const d = new Date(tx.Date);\n  if (!byCategory[tx.Category]) byCategory[tx.Category] = {curr:0, prev:0};\n  if (d.getFullYear()===currentYear && d.getMonth()===currentMonth) {\n    byCategory[tx.Category].curr += parseFloat(tx.Amount);\n  } else if (d.getFullYear()===currentYear && d.getMonth()===prevMonth) {\n    byCategory[tx.Category].prev += parseFloat(tx.Amount);\n  }\n}\n\nconst drifts=[];\nfor (let cat in byCategory) {\n  const {curr, prev} = byCategory[cat];\n  if (prev>0 && curr>prev*1.5) {\n    drifts.push({json:{Category:cat, Current:curr, Previous:prev, AnomalyType:'Drift'}});\n  }\n}\nreturn drifts;"
+      },
+      "id": "d9fd83b9-5060-4a64-bb87-f3ce21e6f9f4",
+      "name": "Spending Drift Detection",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        656,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "dc0c0303-b5a1-4faf-a981-38de7405fd1b",
+      "name": "Merge Anomalies",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        960,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Classify anomalies by severity\nconst items = $input.all();\nreturn items.map(i=>{\n  const tx = i.json;\n  let severity='Low';\n  if (tx.AnomalyType==='Duplicate') severity='Medium';\n  if (tx.AnomalyType==='Spike') severity='High';\n  if (tx.AnomalyType==='Drift') severity='Medium';\n  return {json:{...tx, Severity:severity}};\n});"
+      },
+      "id": "797eec6a-1aa2-4102-89dd-949f6323560b",
+      "name": "Classify Severity",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1168,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Group anomalies into single Slack message\nconst anomalies=$input.all().map(i=>i.json);\nif(!anomalies.length) return [];\n\nlet msg='🚨 Anomaly Detection Report\\n';\nfor(const a of anomalies){\n  if(a.AnomalyType==='Duplicate'){\n    msg+=`Duplicate: ${a.Merchant} €${a.Amount} (${a.Date})\\n`;\n  }\n  if(a.AnomalyType==='Spike'){\n    msg+=`Spike: ${a.Category} €${a.Amount} (avg €${a.Avg.toFixed(2)})\\n`;\n  }\n  if(a.AnomalyType==='Drift'){\n    msg+=`Drift: ${a.Category} increased to €${a.Current} (prev €${a.Previous})\\n`;\n  }\n}\nreturn [{json:{message:msg}}];"
+      },
+      "id": "4bf4a845-e0f7-4934-a159-e463c267a256",
+      "name": "Format Slack Message",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1360,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#finance-alerts",
+        "text": "={{$json.message}}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "e8dc12b1-62b8-4ab7-9f07-9739d6d07de9",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1568,
+        624
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1354170260,
+          "mode": "list",
+          "cachedResultName": "Anomaly Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1354170260"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7e9585e1-ab76-4a52-9d31-a436e1bb3028",
+      "name": "Log Anomalies",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1376,
+        880
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "b64f56bc-3890-41a2-999f-a46aac7f342b",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        832
+      ]
+    }
+  ],
+  "connections": {
+    "3. Detect Duplicates + Spikes1": {
+      "main": [
+        [
+          {
+            "node": "5. Merge Anomalies1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Detect Drifts1": {
+      "main": [
+        [
+          {
+            "node": "5. Merge Anomalies1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "5. Merge Anomalies1": {
+      "main": [
+        [
+          {
+            "node": "6. IF Any Anomalies?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. IF Any Anomalies?1": {
+      "main": [
+        [
+          {
+            "node": "7. Format Alerts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Format Alerts1": {
+      "main": [
+        [
+          {
+            "node": "8. Send Slack Alert1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "9. Log Alerts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger (New Transaction)": {
+      "main": [
+        [
+          {
+            "node": "2. Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "2. Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Fetch Transactions": {
+      "main": [
+        [
+          {
+            "node": "3. Detect Duplicates + Spikes1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "4. Detect Drifts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: New Transaction": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transactions": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Detection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spending Spike Detection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Spending Drift Detection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Detection": {
+      "main": [
+        [
+          {
+            "node": "Merge Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spending Spike Detection": {
+      "main": [
+        [
+          {
+            "node": "Merge Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Spending Drift Detection": {
+      "main": [
+        [
+          {
+            "node": "Merge Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Anomalies": {
+      "main": [
+        [
+          {
+            "node": "Classify Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Severity": {
+      "main": [
+        [
+          {
+            "node": "Format Slack Message",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Slack Message": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

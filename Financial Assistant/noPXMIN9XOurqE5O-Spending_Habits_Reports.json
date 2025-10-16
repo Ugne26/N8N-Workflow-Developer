@@ -1,0 +1,214 @@
+{
+  "name": "Spending Habits Reports",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "habit-report",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        288
+      ],
+      "id": "a00ca177-42a4-4ecc-907a-886f9b8238e4",
+      "webhookId": "5c3c66b3-0574-414e-bafd-2127487aed94",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "functionCode": "const allRows = [];\nfor (const item of items) {\n  // Check if the nested data array exists before trying to add it\n  if (item.json && item.json.data) {\n    allRows.push(...item.json.data);\n  }\n}\nreturn allRows.map(row => ({json: row}));"
+      },
+      "name": "Flatten Report Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        608,
+        192
+      ],
+      "id": "3c2b5a7d-695e-4270-8bbf-4b2a202d7926"
+    },
+    {
+      "parameters": {
+        "functionCode": "// --- FINAL, CORRECTED CODE ---\n\nconst items = $input.all();\nconst tx = items.map(i => i.json);\n\n// 1. Helper Function to Convert Excel Serial Date to JS Date\n// This is the key fix to handle the numeric date format from your sheet.\nfunction excelSerialDateToJSDate(serial) {\n  if (typeof serial !== 'number' || isNaN(serial)) {\n    return null; // Return null for invalid input\n  }\n  // Formula to convert Excel's serial number to a JavaScript Date object.\n  // 25569 is the number of days between Excel's epoch (1900) and JS's epoch (1970).\n  const utc_days = Math.floor(serial - 25569);\n  const date = new Date(utc_days * 86400 * 1000);\n  // Adjust for timezone offset to prevent off-by-one day errors\n  const timezoneOffset = date.getTimezoneOffset() * 60000;\n  return new Date(date.getTime() + timezoneOffset);\n}\n\n\n// 2. Data Cleaning & Preparation\nconst clean = tx.filter(r => r.Amount && r.Date && !['transfer','refund','income'].includes((r.Type||'').toLowerCase()));\nclean.forEach(r => {\n    r.DateObj = excelSerialDateToJSDate(r.Date);\n});\n\nconst validTx = clean.filter(r => r.DateObj); // Work only with validly parsed dates\n\nconst now = new Date();\n\n// CRITICAL CHECK: Verify there's data to analyze.\nif (validTx.length === 0) {\n  return [{ json: { error: \"No valid transactions found. Please check your data source.\" } }];\n}\nconst recentTx = validTx.filter(r => r.DateObj >= new Date(new Date().setDate(now.getDate() - 90)));\nif (recentTx.length === 0) {\n  return [{ json: { error: \"No transactions found in the last 90 days.\" } }];\n}\n\n\n// 3. Helper function to aggregate spending\nfunction aggregate(data) {\n  const totals = {};\n  data.forEach(r => {\n    const cat = r.Category || 'Uncategorized';\n    const amt = Math.abs(parseFloat(r.Amount));\n    if (!totals[cat]) totals[cat] = 0;\n    totals[cat] += amt;\n  });\n  return totals;\n}\n\n// 4. Main report building function\nfunction buildReport(days, label) {\n  const currentStart = new Date(new Date().setDate(now.getDate() - days));\n  const prevStart = new Date(new Date().setDate(now.getDate() - (days * 2)));\n  const avgStart = new Date(new Date().setDate(now.getDate() - 90));\n\n  const currentTx = validTx.filter(r => r.DateObj >= currentStart && r.DateObj <= now);\n  const prevTx = validTx.filter(r => r.DateObj >= prevStart && r.DateObj < currentStart);\n  const avgTx = validTx.filter(r => r.DateObj >= avgStart && r.DateObj < now);\n\n  const currentTotals = aggregate(currentTx);\n  const prevTotals = aggregate(prevTx);\n  const avgTotals = aggregate(avgTx);\n\n  const allCategories = new Set([...Object.keys(currentTotals), ...Object.keys(prevTotals), ...Object.keys(avgTotals)]);\n  const rows = [];\n\n  allCategories.forEach(cat => {\n    const currentAmount = currentTotals[cat] || 0;\n    const prevAmount = prevTotals[cat] || 0;\n    const threeMonthTotal = avgTotals[cat] || 0;\n    const monthlyAvg = threeMonthTotal / 3;\n\n    const diffVsPrev = currentAmount - prevAmount;\n    const changeVsPrevPct = prevAmount > 0 ? ((diffVsPrev / prevAmount) * 100).toFixed(1) : (currentAmount > 0 ? 'NEW' : '0');\n    const diffVsAvg = currentAmount - monthlyAvg;\n    const changeVsAvgPct = monthlyAvg > 0 ? ((diffVsAvg / monthlyAvg) * 100).toFixed(1) : (currentAmount > 0 ? 'NEW' : '0');\n\n    rows.push({\n      'Period': label,\n      'Category': cat,\n      'Current': currentAmount,\n      'Previous': prevAmount,\n      'Average': monthlyAvg,\n      'Diff Vs Prev': diffVsPrev,\n      'Change Vs Prev': changeVsPrevPct,\n      'Diff Vs Avg': diffVsAvg,\n      'Change Vs Avg': changeVsAvgPct,\n      'Timestamp': now.toISOString()\n    });\n  });\n\n  const totalCurrent = Object.values(currentTotals).reduce((a, b) => a + b, 0);\n  const totalPrev = Object.values(prevTotals).reduce((a, b) => a + b, 0);\n  const totalAvg = Object.values(avgTotals).reduce((a, b) => a + b, 0) / 3;\n  rows.push({\n    'Period': label,\n    'Category': \"TOTAL\",\n    'Current': totalCurrent,\n    'Previous': totalPrev,\n    'Average': totalAvg,\n    'Diff Vs Prev': totalCurrent - totalPrev,\n    'Change Vs Prev': totalPrev > 0 ? (((totalCurrent - totalPrev) / totalPrev) * 100).toFixed(1) : 'NEW',\n    'Diff Vs Avg': totalCurrent - totalAvg,\n    'Change Vs Avg': totalAvg > 0 ? (((totalCurrent - totalAvg) / totalAvg) * 100).toFixed(1) : 'NEW',\n    'Timestamp': now.toISOString()\n  });\n\n  return rows;\n}\n\n// 5. Generate and return the reports\nreturn [\n  { json: { period: \"WEEKLY\", data: buildReport(7, \"WEEKLY\") } },\n  { json: { period: \"MONTHLY\", data: buildReport(30, \"MONTHLY\") } }\n];"
+      },
+      "name": "Aggregate & Compare1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        336,
+        288
+      ],
+      "id": "102b5b27-dc2b-4ca0-9c0d-b7726b7639b8"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+        "range": "Reports!A:H",
+        "options": {}
+      },
+      "name": "Write to Reports1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 2,
+      "position": [
+        800,
+        192
+      ],
+      "id": "5a9e3f40-2429-49e1-9c6e-d0d75682f276",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// This function builds the final user-facing summary.\nfunction summarize(data, label) {\n  // Graceful handling if there's not enough data for a period.\n  if (!data || data.length === 0) {\n    return `📊 ${label} Spending Report\\n\\nNot enough data to generate a report for this period.`;\n  }\n  \n  const total = data.find(r => r.Category === \"TOTAL\");\n  if (!total) {\n      return `📊 ${label} Spending Report\\n\\nCould not calculate totals for this period.`;\n  }\n  const cats = data.filter(r => r.Category !== \"TOTAL\");\n\n  // 1. Separate Habits from One-Offs\n  const sortedByDiff = [...cats].sort((a, b) => Math.abs(b['Diff Vs Avg']) - Math.abs(a['Diff Vs Avg']));\n  const notablePurchase = sortedByDiff[0];\n  const habitChanges = sortedByDiff.slice(1, 3);\n\n  // 2. Build the summary text with context (vs average)\n  let summary = `📊 ${label} Spending Report\\n\\n`;\n  summary += `Total spending was €${total.Current.toFixed(2)}. `;\n  summary += `This is ${total['Change Vs Avg'] > 0 ? '🔺' : '✅'} ${Math.abs(total['Change Vs Avg'])}% compared to your 3-month average of €${total.Average.toFixed(2)}/period.\\n\\n`;\n\n  // Highlight the single most notable purchase\n  if (notablePurchase && Math.abs(notablePurchase['Diff Vs Avg']) > 50) {\n    summary += `▪️ Notable Purchase: Your spending on ${notablePurchase.Category} was €${notablePurchase.Current.toFixed(0)}, which is €${Math.abs(notablePurchase['Diff Vs Avg']).toFixed(0)} ${notablePurchase['Diff Vs Avg'] > 0 ? 'more' : 'less'} than usual.\\n`;\n  }\n\n  // Highlight the top 2 habit changes\n  if (habitChanges.length > 0) {\n    summary += '▪️ Top Habit Changes:\\n';\n    habitChanges.forEach(c => {\n      if(Math.abs(c['Diff Vs Avg']) > 20){\n         summary += `  • ${c.Category} was ${c['Diff Vs Avg'] > 0 ? 'up' : 'down'} by €${Math.abs(c['Diff Vs Avg']).toFixed(0)} compared to your average.\\n`;\n      }\n    });\n  }\n  \n  return summary;\n}\n\n// Extract the weekly and monthly data with error checking\nconst weeklyItem = items.find(i => i.json && i.json.period === \"WEEKLY\");\nconst monthlyItem = items.find(i => i.json && i.json.period === \"MONTHLY\");\n\n// If there's no monthly data, we can't proceed.\nif (!monthlyItem) {\n  return [{ json: { text: \"Could not generate the monthly spending report. Not enough transaction data.\" } }];\n}\n\nconst weeklyData = weeklyItem ? weeklyItem.json.data : null;\nconst monthlyData = monthlyItem.json.data;\n\n// Create the final text output\nconst finalText = summarize(monthlyData, 'Monthly');\n\n// Prepare a structured JSON output for your app\nconst jsonForApp = {\n  weeklyReport: weeklyData ? summarize(weeklyData, 'Weekly') : \"Weekly report not available.\",\n  monthlyReport: finalText\n}\n\nreturn [\n  {\n    json: {\n      text: finalText,\n      appData: jsonForApp\n    }\n  }\n];"
+      },
+      "name": "Format Summary1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        608,
+        400
+      ],
+      "id": "d490a2cc-1459-46d6-a684-a7b6caea6e96"
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/financial-agent",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "Send to App1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        800,
+        400
+      ],
+      "id": "8351a049-7c88-4983-8a6a-87d9a2be8f81"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Category",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.Category }}"
+            },
+            {
+              "lookupColumn": "User ID",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.UserID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1d692c1d-2aec-436a-8e7e-a9ddcaec5e35",
+      "name": "2. Fetch All Spending This Month1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        80,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "2. Fetch All Spending This Month1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Flatten Report Data": {
+      "main": [
+        [
+          {
+            "node": "Write to Reports1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate & Compare1": {
+      "main": [
+        [
+          {
+            "node": "Flatten Report Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Format Summary1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Summary1": {
+      "main": [
+        [
+          {
+            "node": "Send to App1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Fetch All Spending This Month1": {
+      "main": [
+        [
+          {
+            "node": "Aggregate & Compare1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

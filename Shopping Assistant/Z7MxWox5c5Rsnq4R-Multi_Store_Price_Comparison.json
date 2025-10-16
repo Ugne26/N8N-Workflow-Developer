@@ -1,0 +1,456 @@
+{
+  "name": "Multi-Store Price Comparison",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2096,
+        640
+      ],
+      "id": "e08675f4-6577-42d9-8ef7-6cc40b200708",
+      "name": "When Called by Main Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced query processing with AI-powered product extraction\nconst input = $input.first().json;\nlet query = '';\nlet sessionId = null;\nlet userId = null;\nlet preferences = {};\nlet context = {};\n\n// Handle multiple input formats\nif (input.query) query = input.query;\nelse if (input.chatInput) query = input.chatInput;\nelse if (input.input) query = input.input;\nelse if (input.message) query = input.message;\nelse if (typeof input === 'string') query = input;\nelse query = JSON.stringify(input);\n\n// Extract metadata\nsessionId = input.sessionId || `session_${Date.now()}`;\nuserId = input.userId || 'anonymous';\npreferences = input.userPreferences || {};\ncontext = input.context || {};\n\n// Enhanced validation\nif (!query || query.trim().length < 2) {\n  return {\n    error: true,\n    errorType: 'validation_failed',\n    message: 'Please tell me what product you\\'re looking for.',\n    suggestions: [\n      'Try: \"iPhone 15 Pro\"',\n      'Try: \"Nike Air Force 1 size 10\"',\n      'Try: \"MacBook Pro M3 14 inch\"',\n      'Try: \"Sony WH-1000XM5 headphones\"'\n    ],\n    originalQuery: query\n  };\n}\n\n// Clean and normalize query\nconst cleanQuery = query.toLowerCase().trim()\n  .replace(/[^a-zA-Z0-9\\s\\-+'\"/]/g, ' ')\n  .replace(/\\s+/g, ' ')\n  .trim();\n\n// Advanced product analysis using patterns and NLP\nconst productAnalysis = {\n  originalQuery: query,\n  cleanQuery: cleanQuery,\n  extractedFeatures: {\n    brand: null,\n    model: null,\n    category: null,\n    size: null,\n    color: null,\n    capacity: null,\n    version: null,\n    material: null\n  },\n  confidence: 0,\n  searchIntent: 'compare', // compare, find, buy, alert\n  keywords: cleanQuery.split(' ').filter(word => word.length > 1)\n};\n\n// Comprehensive brand detection\nconst brandPatterns = {\n  apple: {\n    keywords: ['apple', 'iphone', 'ipad', 'macbook', 'airpods', 'imac', 'mac', 'watch'],\n    categories: ['smartphones', 'tablets', 'laptops', 'audio', 'smartwatch']\n  },\n  samsung: {\n    keywords: ['samsung', 'galaxy', 'note', 'tab'],\n    categories: ['smartphones', 'tablets', 'tv', 'appliances']\n  },\n  sony: {\n    keywords: ['sony', 'playstation', 'ps5', 'ps4', 'xperia', 'bravia', 'wh-1000xm'],\n    categories: ['gaming', 'smartphones', 'tv', 'audio']\n  },\n  nike: {\n    keywords: ['nike', 'air', 'jordan', 'dunk', 'force'],\n    categories: ['shoes', 'clothing', 'sports']\n  },\n  adidas: {\n    keywords: ['adidas', 'yeezy', 'ultraboost', 'stan smith'],\n    categories: ['shoes', 'clothing', 'sports']\n  },\n  microsoft: {\n    keywords: ['microsoft', 'xbox', 'surface', 'windows'],\n    categories: ['gaming', 'laptops', 'tablets', 'software']\n  },\n  google: {\n    keywords: ['google', 'pixel', 'nest', 'chromecast'],\n    categories: ['smartphones', 'smart-home', 'streaming']\n  },\n  bose: {\n    keywords: ['bose', 'quietcomfort', 'soundlink'],\n    categories: ['audio', 'headphones', 'speakers']\n  },\n  dell: {\n    keywords: ['dell', 'alienware', 'xps', 'inspiron'],\n    categories: ['laptops', 'desktops', 'gaming']\n  },\n  hp: {\n    keywords: ['hp', 'hewlett', 'pavilion', 'envy', 'omen'],\n    categories: ['laptops', 'desktops', 'printers']\n  }\n};\n\n// Enhanced category detection with subcategories\nconst categoryPatterns = {\n  smartphones: {\n    keywords: ['phone', 'iphone', 'galaxy', 'pixel', 'smartphone'],\n    subcategories: ['flagship', 'budget', 'gaming']\n  },\n  laptops: {\n    keywords: ['laptop', 'macbook', 'notebook', 'ultrabook', 'chromebook'],\n    subcategories: ['gaming', 'business', 'student', 'creative']\n  },\n  gaming: {\n    keywords: ['playstation', 'xbox', 'nintendo', 'ps5', 'switch', 'gaming', 'console'],\n    subcategories: ['console', 'handheld', 'accessories']\n  },\n  audio: {\n    keywords: ['headphones', 'earbuds', 'speakers', 'soundbar', 'airpods'],\n    subcategories: ['wireless', 'noise-canceling', 'gaming', 'studio']\n  },\n  shoes: {\n    keywords: ['shoes', 'sneakers', 'boots', 'sandals', 'heels'],\n    subcategories: ['running', 'basketball', 'casual', 'dress']\n  },\n  clothing: {\n    keywords: ['shirt', 'pants', 'jacket', 'dress', 'hoodie', 'jeans'],\n    subcategories: ['casual', 'formal', 'athletic', 'outerwear']\n  },\n  tv: {\n    keywords: ['tv', 'television', 'monitor', 'display', 'screen'],\n    subcategories: ['smart', 'gaming', 'professional']\n  },\n  home: {\n    keywords: ['furniture', 'chair', 'table', 'bed', 'sofa', 'desk'],\n    subcategories: ['office', 'bedroom', 'living-room', 'kitchen']\n  }\n};\n\n// Extract brand with confidence scoring\nlet maxBrandScore = 0;\nfor (const [brand, data] of Object.entries(brandPatterns)) {\n  const matches = data.keywords.filter(keyword => cleanQuery.includes(keyword)).length;\n  const score = matches / data.keywords.length;\n  if (score > maxBrandScore) {\n    maxBrandScore = score;\n    productAnalysis.extractedFeatures.brand = brand;\n  }\n}\n\n// Extract category with confidence scoring\nlet maxCategoryScore = 0;\nfor (const [category, data] of Object.entries(categoryPatterns)) {\n  const matches = data.keywords.filter(keyword => cleanQuery.includes(keyword)).length;\n  const score = matches / data.keywords.length;\n  if (score > maxCategoryScore) {\n    maxCategoryScore = score;\n    productAnalysis.extractedFeatures.category = category;\n  }\n}\n\n// Extract specific attributes using regex patterns\nconst patterns = {\n  size: /\\b(\\d+(?:\\.\\d+)?\\s*(?:inch|in|\"|mm|cm|size\\s*\\d+))\\b/i,\n  capacity: /\\b(\\d+(?:gb|tb|mb))\\b/i,\n  color: /\\b(black|white|red|blue|green|yellow|purple|pink|gray|grey|silver|gold|rose|space|midnight|starlight|coral|orange|brown|titanium|graphite|sierra|alpine)\\b/i,\n  version: /\\b(pro|max|plus|mini|air|ultra|se|xs|xr|\\d+(?:th|rd|nd|st)?\\s*gen)\\b/i,\n  model: /\\b([a-z]+[\\-\\s]*\\d+[a-z]*|[a-z]+\\s*[ivx]+)\\b/i\n};\n\nfor (const [attr, pattern] of Object.entries(patterns)) {\n  const match = cleanQuery.match(pattern);\n  if (match) {\n    productAnalysis.extractedFeatures[attr] = match[1].toLowerCase();\n  }\n}\n\n// Calculate overall confidence\nconst extractedCount = Object.values(productAnalysis.extractedFeatures).filter(v => v !== null).length;\nproductAnalysis.confidence = Math.min(0.9, extractedCount * 0.15 + (maxBrandScore + maxCategoryScore) * 0.5);\n\n// Generate optimized search variations\nconst searchVariations = [\n  cleanQuery,\n  // Brand + key terms\n  productAnalysis.extractedFeatures.brand && productAnalysis.keywords.length > 1 ?\n    `${productAnalysis.extractedFeatures.brand} ${productAnalysis.keywords.filter(k => !brandPatterns[productAnalysis.extractedFeatures.brand]?.keywords.includes(k)).slice(0, 3).join(' ')}` : null,\n  // Category focused\n  productAnalysis.extractedFeatures.category ?\n    `${productAnalysis.extractedFeatures.category} ${productAnalysis.keywords.slice(0, 2).join(' ')}` : null,\n  // Model specific\n  productAnalysis.extractedFeatures.model ?\n    `${productAnalysis.extractedFeatures.brand || ''} ${productAnalysis.extractedFeatures.model}`.trim() : null\n].filter(Boolean);\n\n// Detect search intent\nconst intentKeywords = {\n  compare: ['compare', 'vs', 'versus', 'difference', 'better'],\n  buy: ['buy', 'purchase', 'order', 'cheap', 'deal'],\n  find: ['find', 'search', 'look', 'show'],\n  alert: ['alert', 'notify', 'watch', 'track', 'monitor']\n};\n\nfor (const [intent, keywords] of Object.entries(intentKeywords)) {\n  if (keywords.some(keyword => cleanQuery.includes(keyword))) {\n    productAnalysis.searchIntent = intent;\n    break;\n  }\n}\n\nreturn {\n  success: true,\n  sessionId: sessionId,\n  userId: userId,\n  userPreferences: preferences,\n  context: context,\n  timestamp: new Date().toISOString(),\n  productAnalysis: productAnalysis,\n  searchVariations: searchVariations,\n  searchPrimary: cleanQuery,\n  processingTime: Date.now()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1904,
+        640
+      ],
+      "id": "cffdb15f-2560-4147-ba6c-09b2948271ec",
+      "name": "AI Product Analysis"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid-query",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1696,
+        640
+      ],
+      "id": "336822bf-9019-4aff-8707-9bf21b52e64f",
+      "name": "Analysis Valid?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "store_config",
+              "name": "storeConfig",
+              "type": "object",
+              "value": "={\n  \"amazon\": {\n    \"name\": \"Amazon\",\n    \"site\": \"amazon.com\",\n    \"emoji\": \"📦\",\n    \"priority\": 1,\n    \"shipping\": \"Prime available\",\n    \"returns\": \"30-day returns\"\n  },\n  \"walmart\": {\n    \"name\": \"Walmart\",\n    \"site\": \"walmart.com\",\n    \"emoji\": \"🏪\",\n    \"priority\": 2,\n    \"shipping\": \"Free 2-day\",\n    \"returns\": \"90-day returns\"\n  },\n  \"bestbuy\": {\n    \"name\": \"Best Buy\",\n    \"site\": \"bestbuy.com\",\n    \"emoji\": \"🔵\",\n    \"priority\": 3,\n    \"shipping\": \"Store pickup\",\n    \"returns\": \"15-day returns\"\n  },\n  \"target\": {\n    \"name\": \"Target\",\n    \"site\": \"target.com\",\n    \"emoji\": \"🎯\",\n    \"priority\": 4,\n    \"shipping\": \"Same day delivery\",\n    \"returns\": \"30-day returns\"\n  },\n  \"ebay\": {\n    \"name\": \"eBay\",\n    \"site\": \"ebay.com\",\n    \"emoji\": \"🛒\",\n    \"priority\": 5,\n    \"shipping\": \"Varies by seller\",\n    \"returns\": \"Varies by seller\"\n  }\n}"
+            },
+            {
+              "id": "search_config",
+              "name": "searchConfig",
+              "type": "object",
+              "value": "={\n  \"maxResults\": 3,\n  \"timeout\": 8000,\n  \"retryAttempts\": 2,\n  \"qualityThreshold\": 0.6\n}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1488,
+        448
+      ],
+      "id": "2e86610d-83df-4994-9d89-570cf9ac674f",
+      "name": "Setup Search Config"
+    },
+    {
+      "parameters": {
+        "batchSize": 2,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        -1120,
+        128
+      ],
+      "id": "6b278009-d4df-448d-8436-3ae78588cc72",
+      "name": "Batch Store Searches"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Advanced consolidation with ML-like product matching\nconst queryData = $('AI Product Analysis').first().json;\nconst storeConfig = $('Setup Search Config').first().json.storeConfig;\nconst searchQuery = queryData.productAnalysis.originalQuery;\nconst extractedFeatures = queryData.productAnalysis.extractedFeatures;\n\n// Collect results from all stores with error handling\nconst storeResults = {};\nconst storeNames = ['amazon', 'walmart', 'bestbuy', 'target', 'ebay'];\n\nfunction getSearchResults(storeName) {\n  try {\n    const nodeMap = {\n      'amazon': 'Search Amazon',\n      'walmart': 'Search Walmart', \n      'bestbuy': 'Search Best Buy',\n      'target': 'Search Target',\n      'ebay': 'Search eBay'\n    };\n    \n    const node = $(nodeMap[storeName]).first();\n    return node ? node.json : null;\n  } catch (error) {\n    console.log(`Failed to get results from ${storeName}:`, error.message);\n    return null;\n  }\n}\n\n// Get results from each store\nstoreNames.forEach(store => {\n  storeResults[store] = getSearchResults(store);\n});\n\n// Advanced product extraction with quality scoring\nfunction extractProductInfo(results, storeName) {\n  if (!results || !results.items || results.items.length === 0) {\n    return [];\n  }\n\n  return results.items.map((item, index) => {\n    // Enhanced price extraction with multiple patterns\n    const pricePatterns = [\n      /\\$([0-9,]+(?:\\.[0-9]{2})?)/g,\n      /USD\\s*([0-9,]+(?:\\.[0-9]{2})?)/g,\n      /Price[:\\s]*\\$?([0-9,]+(?:\\.[0-9]{2})?)/gi\n    ];\n    \n    let price = null;\n    let numericPrice = null;\n    \n    const searchText = `${item.title} ${item.snippet}`;\n    for (const pattern of pricePatterns) {\n      const matches = searchText.match(pattern);\n      if (matches && matches.length > 0) {\n        price = matches[0];\n        numericPrice = parseFloat(price.replace(/[^0-9.]/g, ''));\n        if (numericPrice && numericPrice > 0) break;\n      }\n    }\n    \n    // Clean and format title\n    let cleanTitle = item.title\n      .replace(/^[^|]*\\|\\s*/, '')\n      .replace(/\\s*[-|]\\s*[^|]*$/, '')\n      .replace(/\\s*\\|\\s*[^|]*$/, '')\n      .trim();\n    \n    if (cleanTitle.length > 100) {\n      cleanTitle = cleanTitle.substring(0, 100) + '...';\n    }\n    \n    // Extract availability and shipping info\n    const availability = extractAvailability(item.snippet);\n    const shipping = extractShipping(item.snippet, storeName);\n    \n    // Calculate relevance score\n    const relevanceScore = calculateRelevance(item, extractedFeatures);\n    \n    return {\n      rank: index + 1,\n      store: storeName,\n      storeInfo: storeConfig[storeName],\n      title: cleanTitle,\n      originalTitle: item.title,\n      price: price,\n      numericPrice: numericPrice,\n      url: item.link,\n      snippet: item.snippet.substring(0, 200) + '...',\n      availability: availability,\n      shipping: shipping,\n      relevanceScore: relevanceScore,\n      extractedAt: new Date().toISOString()\n    };\n  }).filter(product => product.numericPrice && product.numericPrice > 0);\n}\n\n// Enhanced availability detection\nfunction extractAvailability(snippet) {\n  const lowSnippet = snippet.toLowerCase();\n  \n  if (lowSnippet.match(/\\b(in stock|available now|ships today)\\b/)) {\n    return { status: 'In Stock', class: 'success' };\n  } else if (lowSnippet.match(/\\b(out of stock|unavailable|sold out)\\b/)) {\n    return { status: 'Out of Stock', class: 'error' };\n  } else if (lowSnippet.match(/\\b(limited stock|few left|low stock)\\b/)) {\n    return { status: 'Limited Stock', class: 'warning' };\n  } else if (lowSnippet.match(/\\b(pre.?order|coming soon)\\b/)) {\n    return { status: 'Pre-order', class: 'info' };\n  }\n  return { status: 'Check Availability', class: 'neutral' };\n}\n\n// Extract shipping information\nfunction extractShipping(snippet, storeName) {\n  const lowSnippet = snippet.toLowerCase();\n  \n  if (lowSnippet.match(/\\b(free shipping|ships free)\\b/)) {\n    return 'Free shipping';\n  } else if (lowSnippet.match(/\\b(2.day|two day|next day)\\b/)) {\n    return 'Fast shipping';\n  } else if (lowSnippet.match(/\\b(same day|today)\\b/)) {\n    return 'Same day';\n  }\n  \n  return storeConfig[storeName]?.shipping || 'Standard shipping';\n}\n\n// Calculate product relevance score\nfunction calculateRelevance(item, features) {\n  let score = 0;\n  const searchText = `${item.title} ${item.snippet}`.toLowerCase();\n  \n  // Brand matching (high weight)\n  if (features.brand && searchText.includes(features.brand)) {\n    score += 0.3;\n  }\n  \n  // Model/version matching\n  if (features.model && searchText.includes(features.model)) {\n    score += 0.25;\n  }\n  \n  if (features.version && searchText.includes(features.version)) {\n    score += 0.2;\n  }\n  \n  // Color matching\n  if (features.color && searchText.includes(features.color)) {\n    score += 0.1;\n  }\n  \n  // Capacity matching\n  if (features.capacity && searchText.includes(features.capacity)) {\n    score += 0.15;\n  }\n  \n  return Math.min(1.0, score);\n}\n\n// Process results from all stores\nconst allProducts = [];\nconst storeStats = {};\n\nstoreNames.forEach(storeName => {\n  const products = extractProductInfo(storeResults[storeName], storeName);\n  allProducts.push(...products);\n  \n  storeStats[storeName] = {\n    found: products.length,\n    hasResults: products.length > 0,\n    avgPrice: products.length > 0 ? \n      products.reduce((sum, p) => sum + p.numericPrice, 0) / products.length : null,\n    avgRelevance: products.length > 0 ?\n      products.reduce((sum, p) => sum + p.relevanceScore, 0) / products.length : 0\n  };\n});\n\n// Filter and sort products\nconst validProducts = allProducts\n  .filter(product => product.numericPrice > 0 && product.relevanceScore > 0.3)\n  .sort((a, b) => {\n    // Sort by relevance first, then by price\n    if (Math.abs(a.relevanceScore - b.relevanceScore) > 0.1) {\n      return b.relevanceScore - a.relevanceScore;\n    }\n    return a.numericPrice - b.numericPrice;\n  });\n\n// Calculate comprehensive statistics\nconst priceStats = {\n  count: validProducts.length,\n  lowest: validProducts.length > 0 ? Math.min(...validProducts.map(p => p.numericPrice)) : null,\n  highest: validProducts.length > 0 ? Math.max(...validProducts.map(p => p.numericPrice)) : null,\n  average: validProducts.length > 0 ? \n    validProducts.reduce((sum, p) => sum + p.numericPrice, 0) / validProducts.length : null,\n  median: validProducts.length > 0 ? \n    validProducts.sort((a, b) => a.numericPrice - b.numericPrice)[Math.floor(validProducts.length / 2)]?.numericPrice : null\n};\n\n// Identify best deals by store\nconst bestDeals = {};\nstoreNames.forEach(storeName => {\n  const storeProducts = validProducts.filter(p => p.store === storeName);\n  if (storeProducts.length > 0) {\n    bestDeals[storeName] = storeProducts[0];\n  }\n});\n\n// Find alternative/similar products\nconst alternatives = validProducts\n  .filter(p => p.relevanceScore < 0.8 && p.relevanceScore > 0.4)\n  .slice(0, 3);\n\n// Check success criteria\nconst hasResults = validProducts.length > 0;\nconst storesSearched = storeNames.length;\nconst storesWithResults = Object.values(storeStats).filter(stat => stat.hasResults).length;\n\nif (!hasResults) {\n  return {\n    success: false,\n    error: true,\n    errorType: 'no_results_found',\n    message: `No products found for \"${searchQuery}\" across any stores.`,\n    suggestions: [\n      'Try using the exact product name from the manufacturer',\n      'Include brand name (e.g., \"Apple iPhone\" vs \"iPhone\")',\n      'Add model number or specific version',\n      'Check spelling and try alternative product names',\n      'Use more generic terms (e.g., \"wireless headphones\" vs specific model)'\n    ],\n    searchQuery: searchQuery,\n    storesSearched: storesSearched,\n    extractedFeatures: extractedFeatures\n  };\n}\n\nreturn {\n  success: true,\n  searchQuery: searchQuery,\n  extractedFeatures: extractedFeatures,\n  totalProducts: allProducts.length,\n  validProducts: validProducts.length,\n  storesSearched: storesSearched,\n  storesWithResults: storesWithResults,\n  products: validProducts.slice(0, 12), // Top 12 results\n  bestDeals: bestDeals,\n  alternatives: alternatives,\n  priceStats: priceStats,\n  storeStats: storeStats,\n  recommendations: generateRecommendations(validProducts, priceStats),\n  processingTime: Date.now() - queryData.processingTime,\n  timestamp: new Date().toISOString()\n};\n\n// Generate smart recommendations\nfunction generateRecommendations(products, stats) {\n  const recommendations = [];\n  \n  if (stats.count > 1) {\n    const savings = stats.highest - stats.lowest;\n    if (savings > 20) {\n      recommendations.push({\n        type: 'savings',\n        message: `You could save $${savings.toFixed(2)} by choosing the lowest price option!`,\n        priority: 'high'\n      });\n    }\n  }\n  \n  const amazonProducts = products.filter(p => p.store === 'amazon');\n  if (amazonProducts.length > 0) {\n    recommendations.push({\n      type: 'shipping',\n      message: 'Amazon offers Prime shipping for fastest delivery',\n      priority: 'medium'\n    });\n  }\n  \n  const inStockCount = products.filter(p => p.availability.status === 'In Stock').length;\n  if (inStockCount < products.length * 0.5) {\n    recommendations.push({\n      type: 'availability',\n      message: 'Limited availability detected - consider purchasing soon',\n      priority: 'high'\n    });\n  }\n  \n  return recommendations;\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        112
+      ],
+      "id": "227d54ea-7939-4d4d-94ff-b90e79690d17",
+      "name": "Smart Product Matching & Analysis"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-results",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        112
+      ],
+      "id": "568c65b3-a204-49b9-b1b8-58f46f98edce",
+      "name": "Found Products?"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Create an engaging, comprehensive shopping response for: \"{{ $json.searchQuery }}\"\n\n**Product Analysis:**\nExtracted Features: {{ JSON.stringify($json.extractedFeatures, null, 2) }}\n\n**Search Results:**\n- Total Valid Products: {{ $json.validProducts }}\n- Stores with Results: {{ $json.storesWithResults }}/{{ $json.storesSearched }}\n- Processing Time: {{ $json.processingTime }}ms\n\n**Price Statistics:**\n- Lowest: ${{ $json.priceStats.lowest }}\n- Highest: ${{ $json.priceStats.highest }}\n- Average: ${{ $json.priceStats.average ? $json.priceStats.average.toFixed(2) : 'N/A' }}\n- Median: ${{ $json.priceStats.median ? $json.priceStats.median.toFixed(2) : 'N/A' }}\n\n**Best Deals by Store:**\n{{ JSON.stringify($json.bestDeals, null, 2) }}\n\n**Top Products:**\n{{ JSON.stringify($json.products.slice(0, 8), null, 2) }}\n\n**Recommendations:**\n{{ JSON.stringify($json.recommendations, null, 2) }}\n\n**Alternative Products:**\n{{ JSON.stringify($json.alternatives, null, 2) }}\n\nFormat your response as an engaging shopping assistant:\n\n## 🛍️ {{ $json.searchQuery }} - Smart Price Comparison\n\n### 💡 **Quick Summary**\n[Brief overview with best price and key insights]\n\n### 🏆 **Best Deals Found**\n\n**🥇 Best Overall Deal**\n[Top result with price, store, availability]\n\n**🥈 Runner-ups**\n[Next 2-3 best options]\n\n### 📊 **Price Analysis**\n- **Best Price:** ${{ $json.priceStats.lowest }}\n- **Price Range:** ${{ $json.priceStats.lowest }} - ${{ $json.priceStats.highest }}\n- **Average Market Price:** ${{ $json.priceStats.average ? $json.priceStats.average.toFixed(2) : 'N/A' }}\n- **Potential Savings:** ${{ ($json.priceStats.highest - $json.priceStats.lowest).toFixed(2) }}\n\n### 🏪 **Store Comparison**\n\n[For each store with results, include:]\n**[Store Emoji] [Store Name]**\n- Price: $[amount]\n- Product: [title]\n- Availability: [status with appropriate emoji]\n- Shipping: [shipping info]\n- 🔗 [Direct Link](url)\n\n### 🤖 **Smart Recommendations**\n\n[Include personalized recommendations based on the recommendations array]\n\n### 🔍 **Alternative Options** (if any)\n\n[Show alternative products that might interest the user]\n\n### 💳 **Shopping Tips**\n- ✅ Compare final prices including tax and shipping\n- 🚚 Check delivery times for urgent needs\n- 🔄 Verify return policies before purchasing\n- ⭐ Read recent customer reviews\n- 💰 Consider store credit cards for additional discounts\n\n### 📱 **What's Next?**\n- Ask me to track prices for deal alerts\n- Request alternatives or similar products\n- Get specific store information\n- Compare with other products\n\nMake it conversational, helpful, and action-oriented with clear next steps!"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4a263f60-63e0-44a2-ae36-bc5fddcd2ab1",
+      "name": "AI Response Formatter"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log analytics and return final response\nconst input = $input.first().json;\nconst queryData = $('AI Product Analysis').first().json;\n\n// Create analytics object\nconst analytics = {\n  sessionId: queryData.sessionId,\n  userId: queryData.userId,\n  timestamp: new Date().toISOString(),\n  query: queryData.productAnalysis.originalQuery,\n  extractedFeatures: queryData.productAnalysis.extractedFeatures,\n  searchIntent: queryData.productAnalysis.searchIntent,\n  confidence: queryData.productAnalysis.confidence,\n  success: !input.error,\n  errorType: input.errorType || null,\n  processingTime: input.processingTime || null,\n  productsFound: input.validProducts || 0,\n  storesWithResults: input.storesWithResults || 0\n};\n\n// Return the final response with analytics\nreturn {\n  output: input.output || input.text || 'Response generated successfully',\n  success: !input.error,\n  analytics: analytics,\n  metadata: {\n    timestamp: analytics.timestamp,\n    sessionId: analytics.sessionId,\n    responseType: input.error ? 'error' : 'success'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        288,
+        672
+      ],
+      "id": "8601464b-ba89-45b9-a2a3-cdeccbd425a5",
+      "name": "Final Response & Analytics"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "AIzaSyBB5g3VQEPGtNvS-o-zB7NarKXW6wCX14Y"
+            },
+            {
+              "name": "cx",
+              "value": "b4327e2e1f9c4451d"
+            },
+            {
+              "name": "num",
+              "value": "={{ $('Setup Search Config').item.json.searchConfig.maxResults }}"
+            },
+            {
+              "name": "q",
+              "value": "={{ $('AI Product Analysis').item.json.searchPrimary }} site:amazon.com"
+            }
+          ]
+        },
+        "options": {
+          "timeout": "={{ $('Setup Search Config').item.json.searchConfig.timeout }}"
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -768,
+        192
+      ],
+      "id": "dd302838-4349-4a03-9d63-ba0d3dd92152",
+      "name": "Search Amazon1"
+    },
+    {
+      "parameters": {
+        "url": "https://www.googleapis.com/customsearch/v1",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "key",
+              "value": "AIzaSyBB5g3VQEPGtNvS-o-zB7NarKXW6wCX14Y"
+            },
+            {
+              "name": "cx",
+              "value": "b4327e2e1f9c4451d"
+            },
+            {
+              "name": "num",
+              "value": "={{ $('Setup Search Config').item.json.searchConfig.maxResults }}"
+            },
+            {
+              "name": "q",
+              "value": "={{ $('AI Product Analysis').item.json.searchPrimary }} site:ebay.com"
+            }
+          ]
+        },
+        "options": {
+          "timeout": "={{ $('Setup Search Config').item.json.searchConfig.timeout }}"
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -768,
+        400
+      ],
+      "id": "b5df676d-dfee-4e3a-8c58-5d5c2d8849f7",
+      "name": "Search eBay1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle analysis/validation errors with helpful guidance\nconst errorData = $input.first().json;\n\nconst response = `I need a bit more information to help you find the best deals! 🤔\n\n**Issue:** ${errorData.message}\n\n**💡 Here's how to get better results:**\n\n**✅ Great Examples:**\n${errorData.suggestions.map(s => `• ${s}`).join('\\n')}\n\n**🎯 Pro Tips:**\n• Be specific: \"iPhone 15 Pro 128GB\" vs \"phone\"\n• Include brand: \"Sony WH-1000XM5\" vs \"headphones\"\n• Add key details: \"MacBook Pro M3 14 inch\" vs \"laptop\"\n• Specify size/color if important: \"Nike Air Force 1 size 10 white\"\n\n**🛒 What I can do for you:**\n🔍 Search across Amazon, Walmart, Best Buy, Target & eBay\n💰 Find the absolute best prices and deals\n📊 Show price comparisons and savings opportunities\n🚚 Check availability and shipping options\n🔔 Set up price alerts for future deals\n\n**Ready to try again?** Just tell me what product you're looking for! 🛍️`;\n\nreturn {\n  output: response,\n  error: true,\n  errorType: errorData.errorType || 'validation_failed',\n  originalQuery: errorData.originalQuery,\n  suggestions: errorData.suggestions,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        672
+      ],
+      "id": "476a85ee-4459-4ef4-8684-167e24b79c4c",
+      "name": "Handle Validation Error1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle no results with intelligent suggestions\nconst noResultsData = $input.first().json;\nconst extractedFeatures = noResultsData.extractedFeatures;\n\n// Generate smart alternative suggestions based on extracted features\nlet suggestions = [];\n\nif (extractedFeatures.brand) {\n  suggestions.push(`Try searching for other ${extractedFeatures.brand} products`);\n  suggestions.push(`Search for \"${extractedFeatures.brand}\" + specific model number`);\n}\n\nif (extractedFeatures.category) {\n  suggestions.push(`Browse all ${extractedFeatures.category} products`);\n  suggestions.push(`Try generic terms like \"${extractedFeatures.category}\"`);\n}\n\nif (extractedFeatures.model) {\n  suggestions.push(`Search for \"${extractedFeatures.model}\" without other terms`);\n}\n\nif (suggestions.length === 0) {\n  suggestions = [\n    'Try using the exact product name from the manufacturer',\n    'Include brand name in your search',\n    'Use more generic product categories',\n    'Check spelling and try alternative names'\n  ];\n}\n\nconst response = `I searched all major retailers but couldn't find \"${noResultsData.searchQuery}\" with current pricing. Let me help you find what you're looking for! 🔍\n\n🏪 **Stores Searched:** Amazon, Walmart, Best Buy, Target, eBay\n\n${extractedFeatures.brand || extractedFeatures.category ? \n`🤖 **I detected you might be looking for:**\n${extractedFeatures.brand ? `• Brand: ${extractedFeatures.brand.toUpperCase()}` : ''}\n${extractedFeatures.category ? `• Category: ${extractedFeatures.category}` : ''}\n${extractedFeatures.model ? `• Model: ${extractedFeatures.model}` : ''}\n${extractedFeatures.color ? `• Color: ${extractedFeatures.color}` : ''}\n` : ''}\n\n**💡 Let's try these approaches:**\n\n${suggestions.map((s, i) => `${i + 1}. ${s}`).join('\\n')}\n\n**🎯 Examples that work great:**\n• \"MacBook Pro M3 14 inch\"\n• \"Samsung Galaxy S24 Ultra 256GB\"\n• \"Sony WH-1000XM5 headphones\"\n• \"Nike Air Max 270 black size 9\"\n• \"PlayStation 5 console\"\n\n**🚀 Want me to help differently?**\n• Browse categories: \"Show me laptops under $1000\"\n• Find alternatives: \"Find alternatives to [product]\"\n• Get recommendations: \"Best wireless headphones 2024\"\n\nWhat would you like to search for next? 🛍️`;\n\nreturn {\n  output: response,\n  error: true,\n  errorType: 'no_results_found',\n  searchQuery: noResultsData.searchQuery,\n  extractedFeatures: extractedFeatures,\n  suggestions: suggestions,\n  storesSearched: noResultsData.storesSearched,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ],
+      "id": "eef6e888-c883-40ba-83b1-f0d7611410d4",
+      "name": "Handle No Results1"
+    }
+  ],
+  "connections": {
+    "When Called by Main Agent": {
+      "main": [
+        [
+          {
+            "node": "AI Product Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Product Analysis": {
+      "main": [
+        [
+          {
+            "node": "Analysis Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analysis Valid?": {
+      "main": [
+        [
+          {
+            "node": "Setup Search Config",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Validation Error1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Setup Search Config": {
+      "main": [
+        [
+          {
+            "node": "Batch Store Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Batch Store Searches": {
+      "main": [
+        [
+          {
+            "node": "Smart Product Matching & Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Amazon1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search eBay1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Smart Product Matching & Analysis": {
+      "main": [
+        [
+          {
+            "node": "Found Products?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Found Products?": {
+      "main": [
+        [
+          {
+            "node": "AI Response Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle No Results1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Response Formatter": {
+      "main": [
+        [
+          {
+            "node": "Final Response & Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Amazon1": {
+      "main": [
+        [
+          {
+            "node": "Batch Store Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search eBay1": {
+      "main": [
+        [
+          {
+            "node": "Batch Store Searches",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Validation Error1": {
+      "main": [
+        [
+          {
+            "node": "Final Response & Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle No Results1": {
+      "main": [
+        [
+          {
+            "node": "Final Response & Analytics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

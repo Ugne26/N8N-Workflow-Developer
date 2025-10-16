@@ -1,0 +1,314 @@
+{
+  "name": "Keyword Tracker Log",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6fc671f2-79df-4297-a0f9-eb7fb1387a0a",
+      "name": "Called by App"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process incoming request from your app\nconst input = $input.first().json;\n\n// Validate required fields\nif (!input.userId) {\n  throw new Error('userId is required');\n}\n\nif (!input.newsTopics || input.newsTopics.length === 0) {\n  throw new Error('At least one news topic is required');\n}\n\nconst userConfig = {\n  userId: input.userId,\n  newsTopics: Array.isArray(input.newsTopics) ? input.newsTopics : [input.newsTopics],\n  preferredSources: input.preferredSources || [],\n  timezone: input.timezone || 'UTC',\n  language: input.language || 'en',\n  region: input.region || 'global',\n  maxArticlesPerTopic: Math.min(parseInt(input.maxArticlesPerTopic) || 3, 5), // Cap at 5\n  excludeKeywords: input.excludeKeywords || []\n};\n\nconsole.log(`Processing news discovery for user: ${userConfig.userId}`);\nconsole.log(`Topics: ${userConfig.newsTopics.join(', ')}`);\nconsole.log(`Max articles per topic: ${userConfig.maxArticlesPerTopic}`);\n\n// Create search tasks for each topic\nconst searchTasks = userConfig.newsTopics.map((topic, index) => {\n  return {\n    json: {\n      userId: userConfig.userId,\n      topic: topic.trim(),\n      taskId: `topic_${index}`,\n      userConfig: userConfig,\n      searchIndex: index\n    }\n  };\n});\n\nreturn searchTasks;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c5fbd31b-4b6f-4193-8d65-bf6a3219bd20",
+      "name": "Process App Request"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "You are a professional news curator for a daily briefing app. Find relevant, recent, high-quality news articles.\n\n**USER REQUEST:**\n- Topic: {{ $json.topic }}\n- Preferred Sources: {{ $json.userConfig.preferredSources.join(', ') || 'Any reputable source' }}\n- Language: {{ $json.userConfig.language }}\n- Region: {{ $json.userConfig.region }}\n- Max Articles: {{ $json.userConfig.maxArticlesPerTopic }}\n\n**TASK:** Find {{ $json.userConfig.maxArticlesPerTopic }} recent news articles about \"{{ $json.topic }}\" from the last 24-48 hours.\n\n**QUALITY REQUIREMENTS:**\n- Recent articles (last 24-48 hours preferred)\n- Reputable sources only (major news outlets, established publications)\n- Substantial news, not minor updates\n- Accurate information from legitimate sources\n\n**RESPONSE FORMAT - Return ONLY a JSON array:**\n[\n  {\n    \"title\": \"Exact article headline\",\n    \"summary\": \"2-3 sentence summary of key points and significance\",\n    \"source\": \"Publication name (e.g. BBC, Reuters, TechCrunch)\",\n    \"url\": \"Article URL or null if unavailable\",\n    \"relevance_score\": 8,\n    \"news_type\": \"breaking\",\n    \"publish_date\": \"2024-01-15\",\n    \"region\": \"global\"\n  }\n]\n\n**NEWS_TYPE OPTIONS:** breaking, analysis, report, update\n**REGION OPTIONS:** global, US, Europe, Asia, Americas, Africa, Middle East\n\nReturn ONLY the JSON array, no other text."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1500,
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        400,
+        0
+      ],
+      "id": "010dc860-dc18-48e9-82b6-78311858a6ee",
+      "name": "AI News Curator"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Process AI Results with comprehensive debugging\nconsole.log('🔍 Starting AI Results Processing...');\n\n// Step 1: Debug input data structure\nconsole.log('📥 Input structure analysis:');\nconsole.log('- $input.first():', JSON.stringify($input.first(), null, 2));\nconsole.log('- Available keys in $input.first():', Object.keys($input.first()));\n\n// Step 2: Try different ways to access AI response\nlet aiResponse = null;\nconst inputData = $input.first();\n\nconsole.log('🔍 Attempting to find AI response...');\n\n// Try different possible locations for AI response\nif (inputData.json) {\n  console.log('- Checking inputData.json structure:', Object.keys(inputData.json));\n  aiResponse = inputData.json.text || inputData.json.response || inputData.json.content || inputData.json.message;\n}\n\nif (!aiResponse) {\n  aiResponse = inputData.text || inputData.response || inputData.content || inputData.message;\n}\n\nif (!aiResponse) {\n  console.log('❌ Could not find AI response in any expected location');\n  console.log('📋 Full input data:', JSON.stringify(inputData, null, 2));\n  return [];\n}\n\n// Convert to string if needed and validate\nif (typeof aiResponse !== 'string') {\n  console.log('⚠️ AI response is not a string, type:', typeof aiResponse);\n  console.log('📋 AI response value:', JSON.stringify(aiResponse, null, 2));\n  \n  if (aiResponse && typeof aiResponse === 'object') {\n    // Try to extract text from object\n    aiResponse = aiResponse.text || aiResponse.content || aiResponse.message || JSON.stringify(aiResponse);\n  } else {\n    aiResponse = String(aiResponse);\n  }\n}\n\nconsole.log('✅ Found AI response (type: ' + typeof aiResponse + '):', aiResponse.substring(0, 200) + '...');\n\n// Step 3: Debug task data\nconsole.log('📋 Task data analysis:');\nlet taskData = null;\ntry {\n  taskData = $('Process App Request').first().json;\n  console.log('✅ Task data found:', {\n    topic: taskData.topic,\n    searchIndex: taskData.searchIndex,\n    userConfig: taskData.userConfig ? 'present' : 'missing'\n  });\n} catch (error) {\n  console.error('❌ Error accessing task data:', error.message);\n  return [];\n}\n\nconst userConfig = taskData.userConfig;\nif (!userConfig) {\n  console.error('❌ Missing userConfig in task data');\n  return [];\n}\n\nconst today = new Date().toLocaleDateString(\"en-CA\", { timeZone: userConfig.timezone });\nconsole.log('📅 Today date:', today);\n\n// Step 4: Validate AI response\nif (!aiResponse || (typeof aiResponse === 'string' && aiResponse.trim().length === 0)) {\n  console.warn(`❌ Empty AI response for topic: ${taskData.topic}`);\n  return [];\n}\n\n// Ensure aiResponse is a string for processing\nif (typeof aiResponse !== 'string') {\n  console.log('🔄 Converting AI response to string for processing');\n  aiResponse = String(aiResponse);\n}\n\ntry {\n  console.log('🧹 Cleaning AI response...');\n  \n  // Clean and parse AI response\n  let cleanResponse = aiResponse.trim();\n  console.log('Raw response length:', cleanResponse.length);\n  \n  // Remove markdown formatting\n  cleanResponse = cleanResponse.replace(/```json|```/g, '').trim();\n  \n  // Extract JSON if wrapped in text\n  const jsonMatch = cleanResponse.match(/\\[.*\\]/s);\n  if (jsonMatch) {\n    console.log('✅ Found JSON array in response');\n    cleanResponse = jsonMatch[0];\n  } else {\n    console.log('⚠️ No JSON array pattern found, using full response');\n  }\n  \n  console.log('Cleaned response (first 300 chars):', cleanResponse.substring(0, 300));\n  \n  // Parse JSON\n  let articles;\n  try {\n    articles = JSON.parse(cleanResponse);\n    console.log('✅ Successfully parsed JSON');\n  } catch (parseError) {\n    console.error('❌ JSON parsing failed:', parseError.message);\n    console.log('🔍 Attempting to fix common JSON issues...');\n    \n    // Try to fix common JSON issues\n    let fixedResponse = cleanResponse\n      .replace(/,\\s*}/g, '}')  // Remove trailing commas\n      .replace(/,\\s*]/g, ']')  // Remove trailing commas in arrays\n      .replace(/([{,]\\s*)([a-zA-Z_][a-zA-Z0-9_]*)\\s*:/g, '$1\"$2\":'); // Add quotes to keys\n    \n    try {\n      articles = JSON.parse(fixedResponse);\n      console.log('✅ Successfully parsed fixed JSON');\n    } catch (fixError) {\n      console.error('❌ Even fixed JSON parsing failed:', fixError.message);\n      return [];\n    }\n  }\n  \n  // Ensure array format\n  if (!Array.isArray(articles)) {\n    console.log('🔄 Converting single article to array');\n    articles = [articles];\n  }\n  \n  console.log(`📊 Found ${articles.length} articles from AI`);\n  \n  // Debug first article structure\n  if (articles.length > 0) {\n    console.log('🔍 First article structure:', JSON.stringify(articles[0], null, 2));\n  }\n  \n  // Validate and process articles\n  console.log('🔍 Filtering articles...');\n  const validArticles = articles.filter((article, index) => {\n    const isValid = article && \n           article.title && \n           article.title.length > 5 && \n           article.summary &&\n           article.source;\n    \n    if (!isValid) {\n      console.log(`❌ Article ${index} failed validation:`, {\n        hasArticle: !!article,\n        hasTitle: !!(article && article.title),\n        titleLength: article && article.title ? article.title.length : 0,\n        hasSummary: !!(article && article.summary),\n        hasSource: !!(article && article.source)\n      });\n    }\n    \n    return isValid;\n  });\n  \n  console.log(`✅ ${validArticles.length} articles passed validation`);\n  \n  const processedArticles = validArticles\n    .slice(0, userConfig.maxArticlesPerTopic)\n    .map((article, index) => {\n      const guid = `ai_${userConfig.userId}_${taskData.searchIndex}_${index}_${Date.now()}`;\n      \n      const processedArticle = {\n        date: today,\n        topic: taskData.topic,\n        title: article.title.substring(0, 500),\n        snippet: article.summary.substring(0, 1000),\n        contentLink: article.url || null,\n        status: 'Not Sent',\n        guid: guid,\n        newsType: article.news_type || 'update',\n        region: article.region || userConfig.region,\n        relevanceScore: Math.max(1, Math.min(10, article.relevance_score || 5)),\n        searchMethod: 'ai_curated',\n        summary: article.source  // Maps to SUMMARY column in sheet\n      };\n      \n      console.log(`✅ Processed article ${index + 1}:`, {\n        title: processedArticle.title.substring(0, 50) + '...',\n        source: processedArticle.summary,\n        guid: processedArticle.guid\n      });\n      \n      return processedArticle;\n    });\n  \n  console.log(`🎉 Successfully processed ${processedArticles.length} articles for: \"${taskData.topic}\"`);\n  \n  if (processedArticles.length > 0) {\n    console.log('📋 Sample processed article:', JSON.stringify(processedArticles[0], null, 2));\n  }\n  \n  return processedArticles;\n  \n} catch (error) {\n  console.error(`❌ Error processing AI results for \"${taskData.topic}\":`, error.message);\n  console.error('❌ Error stack:', error.stack);\n  console.log('📋 Raw AI response (type: ' + typeof aiResponse + '):', \n    typeof aiResponse === 'string' ? aiResponse.substring(0, 500) : JSON.stringify(aiResponse, null, 2));\n  \n  // Return empty array to avoid breaking workflow\n  return [];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        0
+      ],
+      "id": "de47c373-cb6e-4c54-897c-d72dd29a7677",
+      "name": "Process AI Results"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2027339705,
+          "mode": "list",
+          "cachedResultName": "Tracker – Keyword-Based News",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=2027339705"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "GUID": "={{ $json.guid }}",
+            "DATE": "={{ $json.date }}",
+            "TOPIC": "={{ $json.topic }}",
+            "TITLE": "={{ $json.title }}",
+            "SNIPPET": "={{ $json.snippet }}",
+            "CONTENT LINK": "={{ $json.contentLink }}",
+            "STATUS": "={{ $json.status }}",
+            "NEWS_TYPE": "={{ $json.newsType }}",
+            "REGION": "={{ $json.region }}",
+            "RELEVANCE_SCORE": "={{ $json.relevanceScore }}",
+            "SEARCH_METHOD": "={{ $json.searchMethod }}",
+            "SUMMARY": "={{ $json.summary }}"
+          },
+          "matchingColumns": [
+            "GUID"
+          ],
+          "schema": [
+            {
+              "id": "DATE",
+              "displayName": "DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TOPIC",
+              "displayName": "TOPIC",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TITLE",
+              "displayName": "TITLE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SNIPPET",
+              "displayName": "SNIPPET",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CONTENT LINK",
+              "displayName": "CONTENT LINK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "GUID",
+              "displayName": "GUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "NEWS_TYPE",
+              "displayName": "NEWS_TYPE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "REGION",
+              "displayName": "REGION",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RELEVANCE_SCORE",
+              "displayName": "RELEVANCE_SCORE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SEARCH_METHOD",
+              "displayName": "SEARCH_METHOD",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "SUMMARY",
+              "displayName": "SUMMARY",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        944,
+        0
+      ],
+      "id": "434edcce-471c-4d13-9a30-a167687d8d64",
+      "name": "Save to Database"
+    }
+  ],
+  "connections": {
+    "Called by App": {
+      "main": [
+        [
+          {
+            "node": "Process App Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process App Request": {
+      "main": [
+        [
+          {
+            "node": "AI News Curator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI News Curator": {
+      "main": [
+        [
+          {
+            "node": "Process AI Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Results": {
+      "main": [
+        [
+          {
+            "node": "Save to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {
+    "Called by App": [
+      {
+        "json": {
+          "userId": "test_user_123",
+          "newsTopics": [
+            "artificial intelligence",
+            "climate change"
+          ],
+          "preferredSources": [
+            "BBC",
+            "Reuters",
+            "TechCrunch"
+          ],
+          "timezone": "America/New_York",
+          "language": "en",
+          "region": "US",
+          "maxArticlesPerTopic": 3,
+          "excludeKeywords": [
+            "celebrity",
+            "gossip"
+          ]
+        }
+      }
+    ]
+  },
+  "triggerCount": 0,
+  "meta": null
+}

@@ -1,0 +1,455 @@
+{
+  "name": "Budget + Overspend Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1682341580,
+          "mode": "list",
+          "cachedResultName": "Alerts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1682341580"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User ID": "={{ $json.UserID }}",
+            "Timestamp": "={{ $json.Timestamp }}",
+            "Status": "={{ $json.status }}",
+            "Alert Type": "={{ $json.alertType }}",
+            "Message": "={{ $json.message }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alert Type",
+              "displayName": "Alert Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Category/Name",
+              "displayName": "Category/Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "4862cb0a-9182-4e69-b5e7-cdaa0604eba7",
+      "name": "7. Log Alert to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -464,
+        48
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "budget-alert",
+        "options": {}
+      },
+      "id": "a8e70734-9c0d-41e4-b1e6-a30faa7e2f40",
+      "name": "Webhook: Receives Categorized Transaction1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -2384,
+        -32
+      ],
+      "webhookId": "b502acde-967b-470c-81d9-09627539e549"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transaction = $input.first().json.body;\n\nif (!transaction || !transaction.UserID || !transaction.Category || !transaction.Amount) {\n  return [];\n}\n\nreturn [{ json: transaction }];"
+      },
+      "id": "0b69fb68-ed44-49cb-bda9-aa6839815f7c",
+      "name": "0. Validate & Prepare Input1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2144,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1238206160,
+          "mode": "list",
+          "cachedResultName": "Budget",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1238206160"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Category",
+              "lookupValue": "={{ $json.Category }}"
+            },
+            {
+              "lookupColumn": "User ID",
+              "lookupValue": "={{ $json.UserID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4a609111-19fe-4d16-8f81-c8a0724d4cff",
+      "name": "1. Fetch Budget Limit1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1904,
+        -32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $items().length }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "bf170bb2-5eb9-4ac5-86ab-cbd211cbcb55",
+      "name": "IF Budget Found?1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -1664,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Category",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.Category }}"
+            },
+            {
+              "lookupColumn": "User ID",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.UserID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "306c0470-4dae-49d5-adb4-430c7facd7e5",
+      "name": "2. Fetch All Spending This Month1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1424,
+        -32
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newTransaction = $items('0. Validate & Prepare Input1')[0].json;\nconst budgetLimitData = $items('1. Fetch Budget Limit1')[0].json;\nconst pastTransactions = $items('2. Fetch All Spending This Month1');\n\nconst budgetLimit = parseFloat(budgetLimitData['Monthly Limit']);\nconst category = newTransaction.Category;\nconst userID = newTransaction.UserID;\n\nfunction excelSerialDateToJSDate(serial) {\n  if (typeof serial !== 'number' || isNaN(serial)) return null;\n  const utc_days = Math.floor(serial - 25569);\n  const date = new Date(utc_days * 86400 * 1000);\n  const timezoneOffset = date.getTimezoneOffset() * 60000;\n  return new Date(date.getTime() + timezoneOffset);\n}\n\nconst now = new Date();\nconst currentMonth = now.getMonth();\nconst currentYear = now.getFullYear();\n\nlet totalSpentThisMonth = 0;\nfor (const item of pastTransactions) {\n  const dateValue = item.json.Date;\n  const transactionDate = typeof dateValue === 'number' ? excelSerialDateToJSDate(dateValue) : new Date(dateValue);\n\n  if (transactionDate && transactionDate.getMonth() === currentMonth && transactionDate.getFullYear() === currentYear && item.json['User ID'] === userID) {\n    totalSpentThisMonth += Math.abs(parseFloat(item.json.Amount));\n  }\n}\n\nconst finalTotalSpent = totalSpentThisMonth + Math.abs(parseFloat(newTransaction.Amount));\n\nreturn [{\n  json: {\n    TotalSpent: finalTotalSpent,\n    BudgetLimit: budgetLimit,\n    Category: category,\n    UserID: userID,\n    SpentPercentage: (finalTotalSpent / budgetLimit) * 100\n  }\n}];"
+      },
+      "id": "016313ef-2481-4de9-9145-4817a2770387",
+      "name": "3. Calculate Total Spending1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.SpentPercentage }}",
+              "operation": "largerEqual",
+              "value2": 100
+            },
+            {
+              "value1": "={{ $json.SpentPercentage }}",
+              "operation": "largerEqual",
+              "value2": 90
+            }
+          ]
+        }
+      },
+      "id": "29d0c039-15d5-439c-8bae-4ccc96de0599",
+      "name": "4. Check for Overspend1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -960,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst totalSpent = data.TotalSpent;\nconst budgetLimit = data.BudgetLimit;\nconst category = data.Category;\nconst spentPercentage = data.SpentPercentage;\n\nlet message = '';\nlet status = '';\nlet alertType = '';\n\nif ($top.portIndex === 0) {\n  const overspend = totalSpent - budgetLimit;\n  message = `🚨 Budget Alert: You have overspent by €${overspend.toFixed(2)}! Total spent: €${totalSpent.toFixed(2)} of your €${budgetLimit.toFixed(2)} budget for '${category}' this month.`;\n  status = 'Overspend';\n  alertType = 'Critical';\n} else if ($top.portIndex === 1) {\n  message = `⚠️ Budget Warning: You've spent €${totalSpent.toFixed(2)} of your €${budgetLimit.toFixed(2)} budget for '${category}' this month. You are at ${spentPercentage.toFixed(0)}% of your limit.`;\n  status = 'Warning';\n  alertType = 'Warning';\n}\n\nreturn [{ json: { ...data, message, status, alertType, Timestamp: new Date().toISOString() } }];"
+      },
+      "id": "0a600604-8d9c-47fd-a9fd-8d33f8273bb7",
+      "name": "5. Format Alert Message1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        -32
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#finance-alerts",
+        "text": "={{ $json.message }}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "8bf3a011-d674-4d5a-88e0-5c3677abbb0e",
+      "name": "6. Send Slack Alert1",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        -112
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook: Receives Categorized Transaction1": {
+      "main": [
+        [
+          {
+            "node": "0. Validate & Prepare Input1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "0. Validate & Prepare Input1": {
+      "main": [
+        [
+          {
+            "node": "1. Fetch Budget Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Fetch Budget Limit1": {
+      "main": [
+        [
+          {
+            "node": "IF Budget Found?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Budget Found?1": {
+      "main": [
+        [
+          {
+            "node": "2. Fetch All Spending This Month1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Fetch All Spending This Month1": {
+      "main": [
+        [
+          {
+            "node": "3. Calculate Total Spending1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Calculate Total Spending1": {
+      "main": [
+        [
+          {
+            "node": "4. Check for Overspend1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Check for Overspend1": {
+      "main": [
+        [
+          {
+            "node": "5. Format Alert Message1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "5. Format Alert Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Format Alert Message1": {
+      "main": [
+        [
+          {
+            "node": "6. Send Slack Alert1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "7. Log Alert to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

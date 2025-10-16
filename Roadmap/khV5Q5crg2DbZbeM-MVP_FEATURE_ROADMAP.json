@@ -1,0 +1,1503 @@
+{
+  "name": "MVP FEATURE ROADMAP",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "# MVP APP ROADMAP\n## 2# MVP FEATURES (Back-end)\n\nComprehensive feature roadmap organized by category.\nEach feature box links to actual workflow implementations.\n\n**Status Legend:**\n🟢 Completed | 🟡 In Progress | 🔴 Blocked/Issues\n\n**Last Updated:** October 15, 2025",
+        "height": 8386,
+        "width": 9924
+      },
+      "id": "80288ec4-6c75-4b81-b4f5-07b1afa695b3",
+      "name": "Roadmap Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        80,
+        -2368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 2. SOCIAL MEDIA FEATURES",
+        "height": 80,
+        "width": 536,
+        "color": 4
+      },
+      "id": "f881c686-e1bb-4e6e-a25c-4b38ac999811",
+      "name": "Social Media Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        -64
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 3. TRAVEL FEATURES",
+        "height": 80,
+        "width": 414,
+        "color": 4
+      },
+      "id": "d16a4fb2-a221-4f65-ba49-fbc67aebb6b9",
+      "name": "Travel Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        1456
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Trip Adviser\n\n**Description:**\nProvides personalized travel recommendations based on user preferences and destination. Integrates with TripAdvisor API to fetch attractions and restaurants.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "b86146ac-19ac-43e8-aeaf-919834d49d47",
+      "name": "Trip Adviser",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        1760
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Accommodation Finder\n\n**Description:**\nSearches and compares hotel options across multiple platforms (Booking.com, Expedia, Hotels.com, Agoda) with pricing and availability in multiple currencies.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "e7615d8c-c479-43d1-ae37-17a5514e7982",
+      "name": "Accommodation Finder",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        944,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Booking Automation\n\n**Description:**\nProcesses hotel booking requests, extracts details using AI (hotel name, guest info, preferences), checks for missing information, and generates booking links for platforms like Booking.com, Expedia, and Agoda with personalized booking instructions.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "3765abcb-8e9b-450a-873d-64b7b891502e",
+      "name": "Booking Automation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Flight Finder\n\n**Description:**\nSearches for flights based on origin, destination, dates, and passenger preferences. Provides comprehensive flight options with pricing and booking links.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "296b243e-202a-44d9-bd1a-1cee3f21b07a",
+      "name": "Flight Finder",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1472,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Smart Trip Planner (Calendar Integration)\n\n**Description:**\nAutomatically adds flights, accommodations, and daily activities to the user's Google Calendar for seamless trip organization.\n\n**Status:**🔴 Not Started",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "27afc5d9-8c1c-44e9-82c7-bdf7e2b73aab",
+      "name": "Smart Trip Planner",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2656,
+        960
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Budget & Cost Estimator\n\n**Description:**\nEstimates travel costs based on destination, duration, travel style, and provides budget breakdowns by category (flights, accommodation, food, activities).\n\n**Status:** 🔴 Not Started",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "3396e6dd-cb15-486f-9110-99c38dae61e2",
+      "name": "Budget & Cost Estimator",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2656,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Smart Packing List\n\n**Description:**\nUses destination & dates to fetch weather (OpenWeather API), then GPT suggests climate-aware packing checklist. List is editable and re-syncs on forecast change.\n\n**Status:** 🔴 Not Started",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "77aa49b4-549b-4358-ba81-41b2b6bbdcc4",
+      "name": "Smart Packing List",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2656,
+        1776
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 4. SHOPPING FEATURES",
+        "height": 80,
+        "width": 456,
+        "color": 4
+      },
+      "id": "64f671e6-22a7-4e16-a4fa-b010c4c8f3f9",
+      "name": "Shopping Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2064,
+        3024
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Product Finder\n\n**Description:**\nSearches across multiple retailers (Amazon, eBay, Google Shopping) to find products based on user queries with AI-powered product matching and brand detection.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "20f57b8f-c279-4981-a9a7-13bb51963cc7",
+      "name": "Product Finder",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Multi-Store Price Comparison\n\n**Description:**\nCompares prices across Amazon, eBay, and other platforms. Provides best deals, price statistics, store comparisons, and smart recommendations with affiliate earnings tracking.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "c33b7d06-2ab2-46d4-8271-ebf7704e522c",
+      "name": "Price Comparison",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        2928
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Style/Design Visual Match Finder\n\n**Description:**\nUses GPT-4 Vision and image recognition to find similar products based on uploaded photos. Includes region-aware retailer intelligence and smart intent analysis.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "6e1af619-46af-42e1-86a4-c3454b1315b6",
+      "name": "Visual Match Finder",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        912,
+        2528
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Grocery List Generator\n\n**Description:**\nGenerates organized grocery lists from recipes with smart categorization (Meat, Dairy, Produce, Pantry, Frozen), measurement conversions, and filtering based on user's pantry items.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "f6b8a84b-5763-47c3-9397-81f0625a7f07",
+      "name": "Grocery List Generator",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        2704
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 5. FINANCIAL FEATURES",
+        "height": 80,
+        "width": 446,
+        "color": 4
+      },
+      "id": "1f28f0f7-f557-416f-837e-0de79149c288",
+      "name": "Financial Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        4912
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Expense Categoriser\n\n**Description:**\nEvery transaction and email receipt is auto-sorted using N26-inspired rules (Groceries, Utilities, SaaS, Travel, Dining, Entertainment, etc.). Reports & budgets are accurate without manual tagging—huge time saver with fewer \"uncategorized\" items.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "3cc10d6e-24d6-4d67-b77b-201f8cd5770c",
+      "name": "Expense Categoriser",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        976,
+        4144
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Budget + Overspend Alerts\n\n**Description:**\nBudgets per category (or overall) with early warnings—e.g., \"Dining is at 83% and it's only the 20th.\" Users avoid end-of-month surprises and get gentle nudges to stay on track with MCP integration for AI-powered alerts.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "9d740a54-7b23-441e-a4fa-72042b66d333",
+      "name": "Budget & Overspend Alerts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        4544
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Spending Habits Reports\n\n**Description:**\nWeekly/monthly roll-ups of spend by category, merchant, and trend vs. last period. Shows patterns like \"You spent 40% more on dining this month\" with visual charts and habit change analysis.\n\n**Triggers:** Schedule (weekly/monthly)\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "f7f347d2-8485-42c7-bce3-530a31107605",
+      "name": "Spending Habits Reports",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        960,
+        4544
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Cash Flow Calendar\n\n**Description:**\nCalendar view of all expected ins/outs with daily net position and balance projections. Nightly build/update from recurring income, bills/subscriptions (amount + cadence + next date), and known one-offs. Color-coded events (red warnings, yellow bills, green income).\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "cdc32007-e31c-46ad-bf35-26a1c11d643b",
+      "name": "Cash Flow Calendar",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        4928
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Bill & Subscriptions Tracker\n\n**Description:**\nBuilds a live ledger of recurring charges and warns users before renewals or price hikes. Tracks due dates, amounts, categories with automatic status updates and reminder alerts.\n\n**Status:** 🟡 In Progress",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "467e42a9-9d2c-4323-83f5-d5b52f6a0943",
+      "name": "Bill & Subscriptions Tracker",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        992,
+        5296
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Invoice Auto-Generator\n\n**Description:**\nAutomatically extracts invoice data from PDFs or text using AI parsing (GPT-4o-mini). Smart validation, European number format support, multi-chunk processing, field deduplication, and quality scoring.\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "a89cb69f-1f95-41e9-84c9-dba0cb60a622",
+      "name": "Invoice Auto-Generator",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        4608
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Goal Savings Tracker\n\n**Description:**\nTracks progress to user goals (amount + deadline) and recommends contributions. Shows progress percentage, calculates required monthly savings, and provides goal impact projections.\n\n**Triggers:** New goal added • Payday • Weekly progress check\n**Status:** 🟡 In Progress",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "f20f3e1f-6a25-4aae-ae6b-471bf9130fe2",
+      "name": "Goal Savings Tracker",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3168,
+        4208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Income Tracker & Alerts\n\n**Description:**\nMonitors expected income deposits based on recurring income schedule. Alerts when payments are missing, delayed, or unexpected income received. Tracks monthly income totals against thresholds.\n\n**Status:** 🟡 In Progress",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "2eee200b-9d63-456e-97b2-9bd752891572",
+      "name": "Income Tracker & Alerts",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1504,
+        5296
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Lifestyle Impact Analysis\n\n**Description:**\nModels how small habit changes (\"cut dining 20%\", \"brew coffee at home\") accelerate savings goals. Shows annual savings potential and goal achievement timeline impact.\n\n**Status:** 🟡 In Progress",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "53be19d5-c6e5-42b0-a9da-6810260ff347",
+      "name": "Lifestyle Impact Analysis",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        4208
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Bank Sync (foundation)\n\n**Description:**\nUniversal bank transaction sync supporting multiple formats (Revolut, Wise, Monzo, Open Banking). Standardizes transaction data, deduplicates entries, and auto-categorizes incoming transactions.\n\n\n**Status:** 🟢 Completed",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "a83ffbeb-d553-417e-b6fd-c5e84beeceb9",
+      "name": "Bank Sync",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        4144
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# ISSUES / BLOCKERS",
+        "height": 924,
+        "width": 524,
+        "color": 3
+      },
+      "id": "53e35989-b70b-4137-b562-301ced6b7014",
+      "name": "Issues Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        -1616
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Affiliate Integration Challenge\n\n**Issue:**\nMay require revenue sharing agreements with retailers for affiliate links in shopping features.\n\n**Impact:** Shopping features monetization\n**Status:** 🔴 Blocked",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "3e967ec3-eb5a-4e1c-8f24-7fc3e80f67f2",
+      "name": "Affiliate Integration Issue",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -1488
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Bank Sync API Limitations\n\n**Issue:**\nSome banks have restricted API access or require additional authentication. Open Banking standards not yet universal across all financial institutions.\n\n**Impact:** Financial automation features\n**Status:** 🔴 Blocked",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "6a09355b-aac6-49cb-a131-20bbd34a4dcc",
+      "name": "Bank Sync Issues",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -1104
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# FOR BUSINESS (Future Expansion)",
+        "height": 956,
+        "width": 636,
+        "color": 6
+      },
+      "id": "7ca57769-1d4f-46b8-b74b-2bad5e81c5fb",
+      "name": "For Business Header",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        -544
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Team Collaboration Features\n\n**Description:**\nShared expense tracking, team budgets, collaborative trip planning, and multi-user access controls.\n\n**Status:** 🔴 Not Started\n**Priority:** Future Release",
+        "height": 320,
+        "width": 450,
+        "color": 6
+      },
+      "id": "10dbee90-93fb-496c-b468-09bbac3893bd",
+      "name": "Team Collaboration",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -384
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Technical Stack\n\n**Automation:**\n- n8n (Primary)\n- Zapier (Email/Calendar features)\n\n**AI/ML:**\n- OpenAI GPT-4o / GPT-4o-mini\n- GPT-4 Vision (Visual search)\n\n**APIs & Services:**\n- Google (Gmail, Calendar, Sheets, Drive)\n- Slack (Notifications, approvals)\n- TripAdvisor, Booking.com APIs\n- Amazon, eBay product APIs\n- Banking APIs (Open Banking)\n\n**Database:**\n- Supabase (planned)\n- Google Sheets (current)\n",
+        "height": 628,
+        "width": 550,
+        "color": 7
+      },
+      "id": "661f03ca-0a24-4616-9650-4c15df684ef9",
+      "name": "Technical Stack",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -592,
+        -2368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Bound Flight Finder\n\n**Description:**\nSearches for round-trip flights based on origin, destination, dates, and passenger preferences.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "bdcf6afb-b3d4-4b8e-8080-e079b2fd3714",
+      "name": "Bound Flight Finder",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        944,
+        1360
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Recipe Search Assistant\n\n**Description:**\nTakes user input like \"Find 3 healthy Italian recipes\" and uses AI to generate tailored recipes with names, cooking time, ingredients, steps, and tips.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "05a52bd8-f4a7-4da7-bf3d-7a8a3d4e897c",
+      "name": "Recipe Search Assistant",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3216,
+        2704
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Meal Planning Assistant\n\n**Description:**\nCreates weekly meal plans based on dietary preferences, budget constraints, and nutritional goals.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "708198ed-1e4b-4c00-abbc-31172df2d719",
+      "name": "Meal Planning Assistant",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3744,
+        2704
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Recurring Anomaly Detection\n\n**Description:**\nWhat it does: Spots duplicates, unusual spikes, new/hidden fees, or merchant changes.\nTriggers: New transaction • Weekly scan.\nInputs: Last 90 days of categorized transactions.\nSteps:\n\nRules: duplicate (same merchant/amount/date-window), spike vs. 30/90-day mean, new fee keywords.\n\nOptional: LLM “reasonableness” check on outliers (short explanation).\nOutput: An “Anomalies” sheet + alert with top items and suggested actions (dispute/cancel/check).\nNotes: Whitelist known once-a-year charges; tune thresholds per category.\n\n\n**Status:** 🟢 Completed\n",
+        "height": 464,
+        "width": 450,
+        "color": 4
+      },
+      "id": "22f4b08a-b630-4bcc-997e-5cd66cc6ca30",
+      "name": "Productivity Add-ons",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        5056
+      ]
+    },
+    {
+      "parameters": {
+        "content": "# 1. EMAIL AND CALENDAR FEATURES",
+        "height": 80,
+        "width": 654,
+        "color": 4
+      },
+      "id": "9a3f17af-1668-4417-a253-4659d83d1605",
+      "name": "Email & Calendar Header1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        -1536
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Email Reply Assistant with Approval\n\n**Description:**\nScans incoming emails, determines if a reply is needed, summarizes content with GPT, drafts a response, and sends it to Slack for user approval. Approved replies are sent via Gmail, while all actions are logged in Google Sheets.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 292770385\n**Link:** https://zapier.com/app/editor/292770385",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "045af464-151b-489e-b045-c005ebddc7d1",
+      "name": "Email Reply Assistant with Approval1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        880,
+        -2032
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Email Categorization & Priority Labeling\n\n**Description:**\nGPT labels emails as Urgent, To-Do, No Reply, Promotion, etc., applies Gmail labels, and logs categorization.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 292922321\n**Link:** https://zapier.com/app/editor/292922321",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "91a66695-a4ae-494e-8a2b-143a0ffe0b53",
+      "name": "Email Categorization & Priority Labeling1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -2032
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Calendar Scheduling & Conflict Detection From Incoming Emails\n\n**Description:**\nDetects scheduling intent in emails, adds events to Google Calendar, avoids double-booking, and suggests alternative times if conflicts arise.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 293520195\n**Link:** https://zapier.com/app/editor/293520195",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "e07f8ab2-d762-4d21-91d4-c710c845cfb1",
+      "name": "Calendar Scheduling & Conflict Detection From Incoming Emails1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2832,
+        -2048
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Slack-Based Meeting Conflict Resolution (Needs Review)\n\n**Description:**\nMonitors Slack threads for user replies to scheduling conflicts. Parses replies, updates calendar accordingly, and logs outcomes.\n\n**Status:** 🔴 Needs Review\n**Implementation:** Zapier\n**Zapier ID:** 293787097\n**Link:** https://zapier.com/app/editor/293787097",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "e576bc27-eee8-4b10-a4b4-a00fd9324bd9",
+      "name": "Slack-Based Meeting Conflict Resolution (Needs Review)1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3376,
+        -2048
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Handle Rescheduling Command (Slack to Gmail Reply)\n\n**Description:**\nProcesses rescheduling requests via Slack to Gmail reply workflow, updates calendar events, and notifies relevant parties of schedule changes.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\nhttps://zapier.com/editor/296172747/published?conversationId=b2bbc3c0-2068-47c9-b994-733a2d592249",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "32876334-4207-42bd-9c0e-cdd5e94939fc",
+      "name": "Handle Rescheduling Command (Slack to Gmail Reply)1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3920,
+        -2048
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Natural Language Calendar Control\n\n**Description:**\nAllows users to use natural voice/text commands (\"Book meeting with Sarah next Tuesday 3pm\") and AI interprets intent to create, reschedule, or block events in Google Calendar.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 294014555\n**Link:** https://zapier.com/app/editor/294014555",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "c3187291-223a-498b-a685-592fb8930832",
+      "name": "Natural Language Calendar Control1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2848,
+        -1616
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Handle Slack Reply for Missing Calendar Info\n\n**Description:**\nWhen calendar event creation is missing details, sends Slack prompt to user, captures response, and completes the calendar event with provided information.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\nhttps://zapier.com/editor/294028040/published?conversationId=b2bbc3c0-2068-47c9-b994-733a2d592249",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "881e55e8-9e76-4841-86cf-af1b6baafc9b",
+      "name": "Handle Slack Reply for Missing Calendar Info1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3392,
+        -1616
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Monthly Email Performance Reports\n\n**Description:**\nProvides analytics on email response times, categorization accuracy, and productivity metrics on a monthly basis.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Link:** https://zapier.com/editor/295894334/published?conversationId=b2bbc3c0-2068-47c9-b994-733a2d592249",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "e2c6eb84-5afa-4abd-b655-70b70038b493",
+      "name": "Monthly Email Performance Reports1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2848,
+        -1152
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Weekly Email Performance Reports\n\n**Description:**\nProvides analytics on email response times, categorization accuracy, and productivity metrics (e.g., \"Average response time: 3.2h, 87% of emails categorized correctly\").\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 293870243\n**Link:** https://zapier.com/app/editor/293870243",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "052ee556-9b79-4b64-b239-54f4ae714039",
+      "name": "Weekly Email Performance Reports1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3392,
+        -1152
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Daily Email Reply & Calendar Event Reminder\n\n**Description:**\nEmails that are marked \"Reply Needed\" but not replied to within 24–48h trigger Slack or email reminders. Integrates with calendar to remind about upcoming events requiring follow-up.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 295692377\n**Link:** https://zapier.com/app/editor/295692377",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "7b4d26e1-5873-489f-85de-d2675738842b",
+      "name": "Daily Email Reply & Calendar Event Reminder1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -1632
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Email Memory & Search Assistant\n\n**Description:**\nAllows users to type natural language queries (e.g., \"What did Julia say about shipping last week?\") and receive GPT summaries of matching recent email content. Useful for recalling discussions, tasks, or follow-ups.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 295894334\n**Link:** https://zapier.com/app/editor/295894334",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "a3a7ab52-fd1f-4947-a151-ec29e1d0f6e2",
+      "name": "Email Memory & Search Assistant1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        864,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Calendar Memory & Search Assistant\n\n**Description:**\nAllows users to type natural language queries (e.g., \"When is my meeting with Robert?\") and receive GPT summaries, relevant results. Useful for searching upcoming meetings or tasks.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 295934195\n**Link:** https://zapier.com/app/editor/295934195",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "1fce283a-bc5f-4317-a4ce-5280d25ae37e",
+      "name": "Calendar Memory & Search Assistant1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        -1200
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Youtube Log\n\n**Description:**\nGathers relevant videos from user-selected YouTube channels and includes them in a daily digest email. Powers the \"YouTube\" option in the app's social summary feature, enabling users to receive daily digests of the latest uploads from selected sources.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n\n**Link:** https://drive.google.com/file/d/1SdMdFB2CnwEbEWb5IT6TBvZJiiDPFSex/view?usp=sharing",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "efd29dca-6d51-484d-8f2d-0670a9ab6076",
+      "name": "Youtube Log",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Instagram Log\n\n**Description:**\nCaptures Instagram posts from selected accounts for inclusion in daily summaries.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "a2307156-2e70-4e89-931e-da66cfcc3252",
+      "name": "Instagram Log",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3904,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Topic Tracker – Keyword-Based News Log\n\n**Description:**\nUsers specify specific topics or keywords (e.g., \"AI\", \"Ukraine\", \"Bitcoin\"), and the app automatically finds the most relevant and recent articles about that topic. Tracks specific keywords across news sources.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n\n**Link:** https://drive.google.com/file/d/1hwOuyyjY1csNfKLoBBClLyfoLVf55CjF/view?usp=sharing",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "5155653a-9f97-4b78-9ed3-793f8f7ad421",
+      "name": "Topic Tracker – Keyword-Based News Log",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Topic Tracker – Keyword-Based News Summary Email Sender\n\n**Description:**\nPowers the \"Topic Tracker\" feature in the app. Delivers a daily email digest summarizing the latest and most relevant news for each topic the user is following (e.g., Artificial Intelligence, Bitcoin, Climate Change).\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "77bcbca7-71a1-4532-b05e-40e06bdf88de",
+      "name": "Topic Tracker – Keyword-Based News Summary Email Sender",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Default Platforms Summary Email Sender\n\n**Description:**\nSchedules and rotates email delivery for default social media platform summaries on a set schedule. Sends daily digests of content from selected platforms.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "43bd094e-543d-4c3c-addd-8aab26346953",
+      "name": "Default Platforms Summary Email Sender",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Youtube Video Summary (In progress)\n\n**Description:**\nGenerates AI-powered summaries of YouTube videos for quick consumption without watching the full content.\n\n**Status:** 🟡 In Progress\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "d8a6b205-5ad9-4314-9f6c-67ea142c716b",
+      "name": "Youtube Video Summary (In progress)",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        800,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Facebook Log\n\n**Description:**\nCaptures content from selected Facebook accounts and pages for inclusion in daily summaries.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "4c48ee19-da27-42cf-84df-04782f7cf2ce",
+      "name": "Facebook Log1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        -368
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Twitter Log\n\n**Description:**\nCaptures tweets from selected Twitter/X accounts for inclusion in daily summaries.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "27a455d2-1d61-4efd-b640-048cea569bb0",
+      "name": "Twitter Log1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3904,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Reddit Log\n\n**Description:**\nEnsures relevant Reddit posts are included in the user's daily news briefing email based on selected interests and subreddits.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "0aebe0d5-abe9-4f4f-a774-b007752fe378",
+      "name": "Reddit Log1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2800,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Medium Log\n\n**Description:**\nCaptures articles from selected Medium publications and writers for inclusion in daily summaries.\n\n**Status:** 🟢 Completed\n**Implementation:** n8n",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "760ff003-1679-42e5-abb3-a40218e04748",
+      "name": "Medium Log1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3360,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Daily Briefings & Summaries\n\n**Description:**\nEvery morning, sends a GPT-generated overview of yesterday's key emails, today's events, and pending replies via Slack or email.\n\n**Status:** 🟢 Completed\n**Implementation:** Zapier\n**Zapier ID:** 294648541\n**Link:** https://zapier.com/app/editor/294648541",
+        "height": 320,
+        "width": 450,
+        "color": 4
+      },
+      "id": "d63b70fd-3d3e-4630-a4a4-07c9f42422bd",
+      "name": "Daily Briefings & Summaries1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3936,
+        -1152
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Package Tracker (Order & Shipment Memory)\n\n**Description:**\nTurns every order‑confirmation e‑mail into a live parcel timeline with delay alerts.\n\n**Status:** 🔴 Not Started",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "19b1f368-ebea-4d9c-a014-bb9c6d408130",
+      "name": "Meal Planning Assistant1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2688,
+        3168
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Price Alerts (Watch List)\n\n**Description:**\nUser pastes product URLs; workflow scrapes daily via Bright Data, stores current vs target price, and fires a mobile/e‑mail alert when price ≤ target. Expandable list shows thumbnail, store logos and 30‑day price sparkline.\n\n**Status:** 🔴 Not Started\n\nhttps://n8n.io/workflows/5223-sneaker-price-drop-alerts-with-bright-data-and-n8n/?utm_source=chatgpt.com",
+        "height": 320,
+        "width": 450,
+        "color": 3
+      },
+      "id": "8664b1e9-e351-4013-bc91-064ebe9c9cef",
+      "name": "Price Comparison1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        3328
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Core Financial Management \n\nAutomate the backbone of money tracking, budgeting, and cash flow planning.",
+        "height": 112,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        4032
+      ],
+      "id": "9c32c0ba-19b1-4ab1-b014-ab463c212d7f",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## Enterprise Integrations\n\n**Description:**\nIntegrations with accounting software (QuickBooks, Xero), CRM systems (Salesforce, HubSpot), and enterprise calendar systems.\n\n**Status:** 🔴 Not Started\n**Priority:** Future Release",
+        "height": 320,
+        "width": 450,
+        "color": 6
+      },
+      "id": "58dfb618-166f-46af-a13a-18cf133e1169",
+      "name": "Enterprise Integrations",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Risk & Error Protection\n\nSafeguard user against leaks, fraud, and anomalies.",
+        "height": 112,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        5216
+      ],
+      "id": "d1c66e5f-9c9c-454b-a920-0a14382c3178",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Motivation & Goal Progress\n\nEncourage financial health with gamified insights.",
+        "height": 112,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2912,
+        4096
+      ],
+      "id": "904bf7e8-50ca-4efc-af55-1eb9a0775251",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Productivity Add-ons\n\nExpand financial assistant beyond core money tasks.",
+        "height": 96,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        3072,
+        4704
+      ],
+      "id": "fc452fe8-7830-465b-88e1-0c0ccd647dcf",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## APIs & Add-ons Needed - Banking Data APIs \n\nPlaid / SaltEdge / Nordigen / Tink (region-dependent).  \n\n",
+        "height": 256,
+        "width": 448
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        4768
+      ],
+      "id": "8cdcadfb-6d39-4f7a-af90-9c2080a85994",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "# Additional Features",
+        "height": 1500,
+        "width": 636,
+        "color": 6
+      },
+      "id": "90d7d7a9-e3dc-4a62-9803-e43dbbc83c43",
+      "name": "For Business Header1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -624,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## PERSONALIZATION - User Language Style Learner\n\n**Description:**\nDrafts/replies in their voice; warns on risky/harsh tone before sending. Big trust booster vs generic AI.\n\n\n\nPull 200–500 sent emails → build few-shot style profile (no full fine-tune needed). n8n: Gmail → OpenAI embeddings/prompts → store “style traits” in Supabase; pre-send “tone check” node.\n\n\n\n**Status:** 🔴 Not Started",
+        "height": 352,
+        "width": 450,
+        "color": 6
+      },
+      "id": "12bc1261-30fd-42d0-805f-da746566c581",
+      "name": "Team Collaboration1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        672
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## PRIVACY - Private Mode (Sensitive Docs & Chat Scope)\n\n**Description:**\nProcesses sensitive items (Contracts/Legal, HR, Finance/Bills, IDs/PII, Medical) without sending raw content to external AI. Users choose what’s private and what the assistant may reference in chat.\n\n\n\nWhat it does (benefit):\n\nKeeps confidential docs off third-party LLMs; prevents accidental sharing.\n\nStill delivers summaries, action items, reminders—just privately.\n\nLets users decide per item/category if it can be used in chat memory.\n\n\n**Status:** 🔴 Not Started\n",
+        "height": 496,
+        "width": 450,
+        "color": 6
+      },
+      "id": "be037970-8074-4152-9f91-37ab1f0d5eea",
+      "name": "Enterprise Integrations1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        1088
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## FILE MANAGER - PDF Reader – Smart Analysis & Action\n\n**Description:**\nUploads PDF/DOCX/TXT → extracts full text → GPT‑4o returns executive summary, key terms, actions needed, and any due dates.\nAutomatically saves the summary to Notes, sets calendar events or reminders for deadlines (“sign by 28 Aug”), and creates Promise‑Tracker items like Signature Required. Users can open the doc, add a reminder, push to calendar, or send the analysis—all from the Read File tab.\n\n\n**Status:** 🔴 Not Started\n",
+        "height": 336,
+        "width": 450,
+        "color": 6
+      },
+      "id": "f0c3224d-650f-4e1c-bbb1-a464af7398c2",
+      "name": "Enterprise Integrations2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        1664
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Live Bank-Feed Sync",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_LIVE_BANK-FEED_SYNC_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Live Bank-Feed Sync"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        4384
+      ],
+      "id": "695fa813-0c47-41ff-9e32-5d5611982222",
+      "name": "Live Bank-Feed Sync"
+    },
+    {
+      "parameters": {
+        "description": "AI Expense Categoriser",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_AI_EXPENSE_CATEGORISER_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "AI Expense Categoriser"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        4400
+      ],
+      "id": "fe7cbc42-b8f2-4a29-af56-bdf894de5e61",
+      "name": "AI Expense Categoriser"
+    },
+    {
+      "parameters": {
+        "description": "Budget + Overspend Alerts",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_BUDGET_+_OVERSPEND_ALERTS_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Budget + Overspend Alerts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1904,
+        4784
+      ],
+      "id": "509a9249-260d-49c6-abc7-452a8e4d2a7d",
+      "name": "Budget + Overspend Alerts"
+    },
+    {
+      "parameters": {
+        "description": "Recurring Anomaly Detection",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_RECURRING_ANOMALY_DETECTION_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Recurring Anomaly Detection"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        5456
+      ],
+      "id": "d39629d2-29ea-447a-a390-1defa78a3d01",
+      "name": "Recurring Anomaly Detection"
+    },
+    {
+      "parameters": {
+        "description": "Invoice Auto-Generator",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_INVOICE_AUTO-GENERATOR_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Invoice Auto-Generator"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        4848
+      ],
+      "id": "bdb20b29-2e70-426d-846a-1a6e5ea2b206",
+      "name": "Invoice Auto-Generator1"
+    },
+    {
+      "parameters": {
+        "description": "Income Tracker & Alerts",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_INCOME_TRACKER_&_ALERTS_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Income Tracker & Alerts"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1888,
+        5536
+      ],
+      "id": "bc9010b7-83c7-4293-850f-8e6351e6a7b3",
+      "name": "Income Tracker & Alerts1"
+    },
+    {
+      "parameters": {
+        "description": "Cash Flow Calendar",
+        "workflowId": {
+          "__rl": true,
+          "value": "Y8FoUBASCouGiLGS",
+          "mode": "list",
+          "cachedResultName": "Features — Cash Flow Calendar"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1888,
+        5168
+      ],
+      "id": "c95ee0da-5a59-4724-8186-f01979ef04de",
+      "name": "Cash Flow Calendar1"
+    },
+    {
+      "parameters": {
+        "description": "Spending Habits Reports",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_SPENDING_HABITS_REPORTS_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Spending Habits Reports"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1344,
+        4800
+      ],
+      "id": "93f2456a-68bf-418f-a29b-77334537c914",
+      "name": "Spending Habits Reports1"
+    },
+    {
+      "parameters": {
+        "description": "Lifestyle Impact Analysis",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_LIFESTYLE_IMPACT_ANALYSIS_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Lifestyle Impact Analysis"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3008,
+        4448
+      ],
+      "id": "9afa1b9b-afa9-48fc-974c-555a278f3cdf",
+      "name": "Lifestyle Impact Analysis1"
+    },
+    {
+      "parameters": {
+        "description": "Goal Savings Tracker",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_GOAL_SAVINGS_TRACKER_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Goal Savings Tracker"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3552,
+        4448
+      ],
+      "id": "2d74de98-e3ad-4e21-bdfe-9fa98eb642d4",
+      "name": "Goal Savings Tracker1"
+    },
+    {
+      "parameters": {
+        "description": "Bill & Subscriptions Tracker",
+        "workflowId": {
+          "__rl": true,
+          "value": "REPLACE_BILL_&_SUBSCRIPTIONS_TRACKER_WORKFLOW_ID",
+          "mode": "list",
+          "cachedResultName": "Bill & Subscriptions Tracker"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "chatInput": "={{ $('Chat Input').item.json.chatInput }}",
+            "sessionId": "={{ $('Chat Input').item.json.sessionId || 'fin-session' }}"
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        5536
+      ],
+      "id": "556ec8a1-3c71-40de-979f-4c5f191469ad",
+      "name": "Bill & Subscriptions Tracker1"
+    }
+  ],
+  "connections": {
+    "Live Bank-Feed Sync": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "AI Expense Categoriser": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Budget + Overspend Alerts": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Recurring Anomaly Detection": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Invoice Auto-Generator1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Income Tracker & Alerts1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Cash Flow Calendar1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Spending Habits Reports1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Lifestyle Impact Analysis1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Goal Savings Tracker1": {
+      "ai_tool": [
+        []
+      ]
+    },
+    "Bill & Subscriptions Tracker1": {
+      "ai_tool": [
+        []
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

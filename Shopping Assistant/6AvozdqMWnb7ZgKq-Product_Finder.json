@@ -1,0 +1,393 @@
+{
+  "name": "Product Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -976,
+        544
+      ],
+      "id": "e8fdd403-fe25-4a5e-8c93-186c438227a8",
+      "name": "When Called by Main Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nlet query = '';\nlet sessionId = null;\n\nif (input.query) {\n  query = input.query;\n} else if (input.chatInput) {\n  query = input.chatInput;\n} else if (input.input) {\n  query = input.input;\n} else if (typeof input === 'string') {\n  query = input;\n} else {\n  query = JSON.stringify(input);\n}\n\nsessionId = input.sessionId || null;\n\nif (!query || query.trim().length < 3) {\n  return {\n    error: true,\n    message: 'Please provide a specific product to search for.',\n    suggestion: 'Examples: iPhone 15 Pro, vintage Nike shoes, MacBook Pro',\n    hasQuery: false\n  };\n}\n\nconst originalQuery = query.trim();\nconst cleanedQuery = originalQuery.toLowerCase();\n\nconst stopWords = ['find', 'search', 'looking', 'for', 'buy', 'purchase', 'get', 'need', 'want', 'show', 'me'];\nconst keywords = cleanedQuery\n  .replace(/[^a-zA-Z0-9\\s-]/g, ' ')\n  .split(' ')\n  .filter(word => word.length > 2 && !stopWords.includes(word))\n  .slice(0, 6)\n  .join(' ');\n\nconst searchVariations = {\n  amazon: {\n    primary: keywords,\n    withBrand: originalQuery,\n    categorySpecific: keywords + ' ' + (cleanedQuery.includes('vintage') ? 'collectible' : 'new')\n  },\n  ebay: {\n    primary: keywords,\n    auction: keywords + ' auction',\n    vintage: keywords + (cleanedQuery.includes('vintage') ? ' vintage collectible' : ' used'),\n    buyItNow: keywords + ' buy it now'\n  }\n};\n\nlet category = 'general';\nlet confidence = 0;\nlet preferredPlatform = 'both';\n\nconst categories = {\n  electronics: {\n    keywords: ['phone', 'smartphone', 'mobile', 'iphone', 'android', 'tablet', 'ipad', 'laptop', 'computer', 'pc', 'macbook', 'headphones', 'earbuds', 'speaker', 'tv', 'monitor', 'camera', 'gaming', 'console'],\n    platformPreference: 'amazon'\n  },\n  vintage: {\n    keywords: ['vintage', 'antique', 'collectible', 'rare', 'classic', 'retro', 'old', 'original'],\n    platformPreference: 'ebay'\n  },\n  fashion: {\n    keywords: ['shoes', 'sneakers', 'boots', 'clothing', 'shirt', 'dress', 'pants', 'jeans', 'jacket', 'coat', 'sweater', 'hoodie', 'bag', 'purse', 'watch', 'jewelry'],\n    platformPreference: 'both'\n  },\n  home: {\n    keywords: ['furniture', 'chair', 'table', 'bed', 'sofa', 'couch', 'lamp', 'kitchen', 'appliance', 'vacuum', 'cleaning', 'decor', 'bedding'],\n    platformPreference: 'amazon'\n  }\n};\n\nfor (const cat in categories) {\n  const data = categories[cat];\n  const matchCount = data.keywords.filter(keyword => cleanedQuery.includes(keyword)).length;\n  if (matchCount > confidence) {\n    confidence = matchCount;\n    category = cat;\n    preferredPlatform = data.platformPreference;\n  }\n}\n\nconst brands = {\n  apple: ['apple', 'iphone', 'ipad', 'macbook', 'airpods', 'imac'],\n  samsung: ['samsung', 'galaxy'],\n  sony: ['sony', 'playstation', 'ps5', 'ps4'],\n  nike: ['nike', 'air jordan', 'swoosh'],\n  adidas: ['adidas', 'three stripes'],\n  microsoft: ['microsoft', 'xbox', 'surface']\n};\n\nlet detectedBrand = null;\nfor (const brand in brands) {\n  if (brands[brand].some(keyword => cleanedQuery.includes(keyword))) {\n    detectedBrand = brand;\n    break;\n  }\n}\n\nconst specs = {\n  hasSize: /\\b(size|sz)\\s*(\\d+|xs|s|m|l|xl|xxl)\\b/i.test(originalQuery),\n  hasCapacity: /\\b(\\d+\\s*(gb|tb|mb))\\b/i.test(originalQuery),\n  hasColor: /\\b(black|white|red|blue|green|yellow|pink|gray|silver|gold)\\b/i.test(originalQuery),\n  hasPrice: /\\b(under|below|less than|cheaper than)\\s*\\$?\\d+\\b/i.test(originalQuery),\n  isVintage: /\\b(vintage|antique|classic|retro|old|original|collectible)\\b/i.test(originalQuery),\n  isUsed: /\\b(used|pre-owned|second hand|refurbished)\\b/i.test(originalQuery),\n  isNew: /\\b(new|brand new|unopened)\\b/i.test(originalQuery)\n};\n\nconst platformConfig = {\n  enableAmazon: true,\n  enableEbay: true,\n  enableGoogleShopping: false,\n  primaryPlatform: preferredPlatform === 'ebay' ? 'ebay' : 'amazon',\n  searchBoth: preferredPlatform === 'both'\n};\n\nlet searchStrategy = 'balanced';\nif (specs.isVintage || specs.isUsed) {\n  searchStrategy = 'ebay-focused';\n  platformConfig.primaryPlatform = 'ebay';\n} else if (specs.isNew || category === 'electronics') {\n  searchStrategy = 'amazon-focused';\n  platformConfig.primaryPlatform = 'amazon';\n} else {\n  searchStrategy = 'dual-platform';\n  platformConfig.searchBoth = true;\n}\n\nreturn {\n  originalQuery: originalQuery,\n  cleanedQuery: cleanedQuery,\n  keywords: keywords,\n  searchVariations: searchVariations,\n  category: category,\n  categoryConfidence: confidence,\n  detectedBrand: detectedBrand,\n  specifications: specs,\n  platformConfig: platformConfig,\n  preferredPlatform: preferredPlatform,\n  sessionId: sessionId,\n  timestamp: new Date().toISOString(),\n  hasQuery: true,\n  searchStrategy: searchStrategy\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -784,
+        544
+      ],
+      "id": "e1df974c-2aa4-44af-bd6f-26edf7ab72f7",
+      "name": "Query Processor"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid-query",
+              "leftValue": "={{ $json.hasQuery }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        544
+      ],
+      "id": "77663005-3c66-420d-be23-71147ad1e62a",
+      "name": "Valid Query Check"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "amazon-enabled",
+              "leftValue": "={{ $('Query Processor').item.json.platformConfig.enableAmazon }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        128
+      ],
+      "id": "63612550-4904-410f-8ff4-3e8502e2b75b",
+      "name": "Amazon Enabled?1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "ebay-enabled",
+              "leftValue": "={{ $('Query Processor').item.json.platformConfig.enableEbay }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -224,
+        448
+      ],
+      "id": "d76c1671-3829-4d38-8cff-ff7dc05210f7",
+      "name": "eBay Enabled?1"
+    },
+    {
+      "parameters": {
+        "url": "https://webservices.amazon.com/paapi5/searchitems",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            },
+            {
+              "name": "X-Amz-Target",
+              "value": "com.amazon.paapi5.v1.ProductAdvertisingAPIv1.SearchItems"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Service",
+              "value": "ProductAdvertisingAPI"
+            },
+            {
+              "name": "Operation",
+              "value": "SearchItems"
+            },
+            {
+              "name": "Marketplace",
+              "value": "www.amazon.com"
+            },
+            {
+              "name": "PartnerTag",
+              "value": "YOUR_AMAZON_ASSOCIATE_TAG"
+            },
+            {
+              "name": "PartnerType",
+              "value": "Associates"
+            },
+            {
+              "name": "Keywords",
+              "value": "={{ $('Query Processor').item.json.searchVariations.amazon.primary }}"
+            },
+            {
+              "name": "SearchIndex",
+              "value": "All"
+            },
+            {
+              "name": "ItemCount",
+              "value": 10
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "b7d5f431-5708-4eec-b382-19979383db6c",
+      "name": "Amazon API Search"
+    },
+    {
+      "parameters": {
+        "url": "https://api.ebay.com/buy/browse/v1/item_summary/search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Query Processor').item.json.searchVariations.ebay.primary }}"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            },
+            {
+              "name": "filter",
+              "value": "priceCurrency:USD"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-EBAY-C-MARKETPLACE-ID",
+              "value": "EBAY_US"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        272
+      ],
+      "id": "041d669f-c940-41aa-a756-db80a5fab3ba",
+      "name": "eBay API Search"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        432,
+        272
+      ],
+      "id": "fb4f713d-33b3-4c6e-8f78-399b9a597f1d",
+      "name": "Merge Results"
+    },
+    {
+      "parameters": {
+        "jsCode": "const queryData = $('Query Processor').first().json;\nconst originalQuery = queryData.originalQuery;\nconst category = queryData.category;\nconst detectedBrand = queryData.detectedBrand;\nconst specs = queryData.specifications;\n\nif (!queryData.hasQuery) {\n  return {\n    success: false,\n    error: 'validation_failed',\n    message: 'Please provide a specific product to search for.',\n    suggestions: ['iPhone 15 Pro', 'vintage Nike shoes', 'MacBook Pro M3', 'Samsung 4K TV'],\n    originalQuery: originalQuery\n  };\n}\n\nfunction generateMockProducts(query, category, brand, specs) {\n  const products = [];\n  const priceMatch = query.match(/\\d+/);\n  const basePrice = priceMatch ? parseInt(priceMatch[0]) : \n    category === 'electronics' ? 299 : category === 'vintage' ? 89 : 149;\n  \n  const productCount = 8 + Math.floor(Math.random() * 5);\n  \n  for (let i = 0; i < productCount; i++) {\n    const isAmazon = Math.random() > 0.5;\n    const platform = isAmazon ? 'amazon' : 'ebay';\n    const priceVariation = 0.7 + (Math.random() * 0.6);\n    const price = Math.round(basePrice * priceVariation * 100) / 100;\n    \n    const conditions = specs.isVintage ? ['vintage', 'rare', 'classic'] : \n                     specs.isUsed ? ['used', 'refurbished', 'open box'] :\n                     ['new', 'brand new', 'latest'];\n    \n    const condition = conditions[Math.floor(Math.random() * conditions.length)];\n    const colors = ['black', 'white', 'blue', 'red', 'silver'];\n    const color = colors[Math.floor(Math.random() * colors.length)];\n    \n    const titleVariations = [\n      condition + ' ' + query,\n      query + ' ' + color,\n      query + ' Pro',\n      'Premium ' + query,\n      query + ' - ' + condition\n    ];\n    \n    const title = titleVariations[i % titleVariations.length];\n    const amazonFeatures = ['Prime Eligible', 'Free Shipping', 'New', 'Warranty'];\n    const ebayFeatures = ['Buy It Now', 'Best Offer', 'Free Returns', 'Top Rated'];\n    \n    const features = isAmazon ? \n      amazonFeatures.slice(0, 2 + Math.floor(Math.random() * 2)) :\n      ebayFeatures.slice(0, 2 + Math.floor(Math.random() * 2));\n    \n    if (specs.isVintage) features.push('Collectible');\n    if (specs.isNew) features.push('Brand New');\n    \n    products.push({\n      rank: i + 1,\n      title: title,\n      price: '$' + price.toFixed(2),\n      numericPrice: price,\n      platform: platform,\n      retailer: isAmazon ? 'Amazon' : 'eBay',\n      url: 'https://' + platform + '.com/product-' + (i + 1),\n      description: condition + ' ' + query + ' with ' + features.slice(0, 2).join(' and '),\n      features: features,\n      rating: (3.5 + Math.random() * 1.5).toFixed(1),\n      category: category,\n      relevanceScore: 6 + Math.floor(Math.random() * 4),\n      affiliateEarnings: isAmazon ? '3-8%' : '1-4%'\n    });\n  }\n  \n  return products;\n}\n\nconst mockProducts = generateMockProducts(originalQuery, category, detectedBrand, specs);\n\nconst sortedProducts = mockProducts.sort((a, b) => {\n  if (queryData.searchStrategy === 'ebay-focused' && a.platform === 'ebay' && b.platform !== 'ebay') {\n    return -1;\n  }\n  if (queryData.searchStrategy === 'amazon-focused' && a.platform === 'amazon' && b.platform !== 'amazon') {\n    return -1;\n  }\n  if (a.relevanceScore !== b.relevanceScore) {\n    return b.relevanceScore - a.relevanceScore;\n  }\n  return a.numericPrice - b.numericPrice;\n});\n\nsortedProducts.forEach((product, index) => {\n  product.rank = index + 1;\n});\n\nconst stats = {\n  totalResults: sortedProducts.length,\n  amazonResults: sortedProducts.filter(p => p.platform === 'amazon').length,\n  ebayResults: sortedProducts.filter(p => p.platform === 'ebay').length,\n  averagePrice: sortedProducts.reduce((sum, p) => sum + p.numericPrice, 0) / sortedProducts.length,\n  priceRange: {\n    min: Math.min(...sortedProducts.map(p => p.numericPrice)),\n    max: Math.max(...sortedProducts.map(p => p.numericPrice))\n  },\n  platformBreakdown: {\n    amazon: sortedProducts.filter(p => p.platform === 'amazon').length,\n    ebay: sortedProducts.filter(p => p.platform === 'ebay').length\n  }\n};\n\nconst topProducts = sortedProducts.slice(0, 5);\nlet formattedResponse = '## 🔍 Multi-Platform Product Search: ' + originalQuery + '\\n\\n';\nformattedResponse += '### 📊 Search Overview\\n';\nformattedResponse += '- **Found:** ' + sortedProducts.length + ' products across Amazon & eBay\\n';\nformattedResponse += '- **Strategy:** ' + queryData.searchStrategy.replace('-', ' ') + '\\n';\nformattedResponse += '- **Price Range:** $' + stats.priceRange.min + ' - $' + stats.priceRange.max + '\\n';\nformattedResponse += '- **Average Price:** $' + stats.averagePrice.toFixed(2) + '\\n\\n';\n\nformattedResponse += '### 🏆 Top Recommendations\\n\\n';\n\ntopProducts.forEach(product => {\n  formattedResponse += '**' + product.rank + '. ' + product.title + '**\\n';\n  formattedResponse += '- 💰 **Price:** ' + product.price + ' on ' + product.retailer + '\\n';\n  formattedResponse += '- 🏪 **Platform:** ' + product.retailer + ' (' + product.affiliateEarnings + ')\\n';\n  formattedResponse += '- ⭐ **Rating:** ' + product.rating + '\\n';\n  formattedResponse += '- ✨ **Features:** ' + product.features.join(', ') + '\\n';\n  formattedResponse += '- 🔗 **Link:** ' + product.url + '\\n';\n  formattedResponse += '- 📝 ' + product.description + '\\n\\n';\n});\n\nformattedResponse += '### 🛒 Platform Benefits\\n\\n';\nformattedResponse += '**Amazon Advantages:**\\n- ✅ Prime shipping & returns\\n- ✅ New products with warranty\\n- ✅ Higher affiliate commissions (3-8%)\\n\\n';\nformattedResponse += '**eBay Advantages:**\\n- ✅ Unique & vintage items\\n- ✅ Auction opportunities for deals\\n- ✅ Used items at lower prices\\n- ✅ Affiliate commissions (1-4%)\\n\\n';\nformattedResponse += '### 💡 Smart Shopping Tips\\n- Compare prices across both platforms\\n- Check seller ratings and return policies\\n- Factor in shipping costs and delivery times\\n- Look for coupon codes and promotions\\n\\n';\nformattedResponse += '**Note:** This search combines the best of both worlds - Amazon\\'s reliability and eBay\\'s unique inventory. Full API integration coming soon for even better results!';\n\nreturn {\n  success: true,\n  message: formattedResponse,\n  products: sortedProducts,\n  stats: stats,\n  searchQuery: originalQuery,\n  category: category,\n  detectedBrand: detectedBrand,\n  searchStrategy: queryData.searchStrategy,\n  timestamp: new Date().toISOString(),\n  integrationStatus: {\n    amazonIntegrated: false,\n    ebayIntegrated: false,\n    usingMockData: true\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        560
+      ],
+      "id": "1c203d18-8e35-450e-b598-c8fec38dadc8",
+      "name": "Unified Response Processor1"
+    }
+  ],
+  "connections": {
+    "When Called by Main Agent": {
+      "main": [
+        [
+          {
+            "node": "Query Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Processor": {
+      "main": [
+        [
+          {
+            "node": "Valid Query Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Query Check": {
+      "main": [
+        [
+          {
+            "node": "Amazon Enabled?1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "eBay Enabled?1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Unified Response Processor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Amazon Enabled?1": {
+      "main": [
+        [
+          {
+            "node": "Amazon API Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "eBay Enabled?1": {
+      "main": [
+        [
+          {
+            "node": "eBay API Search",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Amazon API Search": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "eBay API Search": {
+      "main": [
+        [
+          {
+            "node": "Merge Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Results": {
+      "main": [
+        [
+          {
+            "node": "Unified Response Processor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

@@ -1,0 +1,408 @@
+{
+  "name": "Lifestyle Impact Analysis",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/financial-agent",
+        "jsonParameters": true,
+        "options": {}
+      },
+      "name": "Send to Financial Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        -432
+      ],
+      "id": "9efe94b3-0df3-469b-8f48-2c238f070794"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lifestyle-impact",
+        "options": {}
+      },
+      "name": "Webhook Trigger1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -528
+      ],
+      "id": "74b2a87d-cac4-4f7d-926c-c9502b0aa029",
+      "webhookId": "33e02bbc-985b-4960-91b6-ed9e1163bbed"
+    },
+    {
+      "parameters": {
+        "triggerTimes": {
+          "item": [
+            {
+              "mode": "everyMonth",
+              "hour": 8
+            }
+          ]
+        }
+      },
+      "name": "Schedule Trigger1",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -352
+      ],
+      "id": "6c601528-05b4-4369-beaf-0d8e100e3a3b"
+    },
+    {
+      "parameters": {
+        "functionCode": "const tx = items.filter(i => i.json && i.json.Amount);\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - 90*24*60*60*1000);\n\nconst clean = tx.map(i => i.json).filter(r => {\n  const amt = parseFloat(r.Amount);\n  const d = new Date(r.Date);\n  return !isNaN(amt) && amt > 0 && d >= cutoff;\n});\n\nconst totals = {};\nclean.forEach(r => {\n  const cat = (r.Category || 'Uncategorized').trim();\n  const amt = Math.abs(parseFloat(r.Amount));\n  if (!totals[cat]) totals[cat] = {total: 0, count: 0};\n  totals[cat].total += amt;\n  totals[cat].count++;\n});\n\nconst scored = Object.entries(totals).map(([cat, val]) => {\n  const score = val.total * 0.7 + val.count * 10;\n  return {category: cat, total: val.total, count: val.count, score};\n});\n\nconst candidates = [\"Dining\",\"Coffee\",\"Subscriptions\",\"Transport\",\"Shopping\"];\n\nconst selected = scored\n  .filter(s => candidates.includes(s.category))\n  .sort((a,b) => b.score - a.score)\n  .slice(0,3);\n\nreturn selected.map(c => ({json: c}));"
+      },
+      "name": "Elastic Category Detector1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        832,
+        -432
+      ],
+      "id": "706ffd75-c6c5-46be-87da-d88afd91ba44"
+    },
+    {
+      "parameters": {
+        "functionCode": "const categories = items.map(i => i.json);\n\nconst rules = {\n  Dining: {cut: \"20%\", factor: 0.2, tip: \"Swap one takeout meal for home cooking each week 🍲\"},\n  Coffee: {cut: \"15%\", factor: 0.15, tip: \"Brew coffee at home a few days a week ☕\"},\n  Subscriptions: {cut: \"Cancel 1 service\", factor: 0.1, tip: \"Review your streaming services and cancel one unused 📺\"},\n  Transport: {cut: \"10%\", factor: 0.1, tip: \"Use public transport or carpool once a week 🚍\"},\n  Shopping: {cut: \"10%\", factor: 0.1, tip: \"Delay one purchase per month 🛍\"}\n};\n\nconst results = categories.map(cat => {\n  const rule = rules[cat.category] || {cut:\"10%\",factor:0.1,tip:\"General saving tip\"};\n  const annualSavings = (cat.total * rule.factor * 12/3);\n  return {\n    category: cat.category,\n    cut: rule.cut,\n    savingsPerYear: Math.round(annualSavings),\n    tip: rule.tip\n  };\n});\n\nreturn results.map(r => ({json: r}));"
+      },
+      "name": "Model Savings Impact1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        -432
+      ],
+      "id": "21b5b856-3219-4962-ae63-f3022ff25e16"
+    },
+    {
+      "parameters": {
+        "functionCode": "const savings = items.filter(i => i.json && i.json.category);\nconst goalsInput = $items(\"Fetch Goals\", 0, 0).map(i => i.json);\n\nif (!goalsInput.length) {\n  return savings.map(s => ({json: {...s.json, goalImpact: \"No goals found\", Timestamp: new Date().toISOString()}}));\n}\n\nconst topGoal = goalsInput.sort((a,b) => (a.Priority||999) - (b.Priority||999))[0];\n\nsavings.forEach(s => {\n  const extra = s.json.savingsPerYear;\n  const remaining = topGoal.Target - topGoal.Saved;\n  const monthsSaved = remaining > 0 ? (extra/remaining*12).toFixed(1) : 0;\n  s.json.goalImpact = `${topGoal.Name} ${monthsSaved} months earlier`;\n  s.json.Timestamp = new Date().toISOString();\n});\n\nreturn savings;"
+      },
+      "name": "Map to Goals1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        -432
+      ],
+      "id": "1fa911d2-2a17-4299-bf36-80d081bcc60c"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 715189685,
+          "mode": "list",
+          "cachedResultName": "Goal Savings",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=715189685"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Category",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.Category }}"
+            },
+            {
+              "lookupColumn": "User ID",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.UserID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6cc718a5-24c0-450b-bb32-06731dabb99b",
+      "name": "Fetch Goals",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        640,
+        -320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Category",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.Category }}"
+            },
+            {
+              "lookupColumn": "User ID",
+              "lookupValue": "={{ $items('0. Validate & Prepare Input1')[0].json.UserID }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e1cb95b1-84eb-496f-978d-15c4bc9ac852",
+      "name": "Fetch Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        624,
+        -512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1697430137,
+          "mode": "list",
+          "cachedResultName": "Lifestyle Impact",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1697430137"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "User ID": "={{ $json.UserID }}",
+            "Timestamp": "={{ $json.Timestamp }}",
+            "Category": "={{ $json.Category }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Monthly Spend",
+              "displayName": "Monthly Spend",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Impact Score",
+              "displayName": "Impact Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Recommendation",
+              "displayName": "Recommendation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "2e88fbca-9108-40bf-b4a7-7470dee62458",
+      "name": "7. Log Alert to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1440,
+        -432
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Transactions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Goals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Fetch Goals",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Elastic Category Detector1": {
+      "main": [
+        [
+          {
+            "node": "Model Savings Impact1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Model Savings Impact1": {
+      "main": [
+        [
+          {
+            "node": "Map to Goals1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map to Goals1": {
+      "main": [
+        [
+          {
+            "node": "7. Log Alert to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Goals": {
+      "main": [
+        [
+          {
+            "node": "Elastic Category Detector1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Transactions": {
+      "main": [
+        [
+          {
+            "node": "Elastic Category Detector1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Log Alert to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Send to Financial Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

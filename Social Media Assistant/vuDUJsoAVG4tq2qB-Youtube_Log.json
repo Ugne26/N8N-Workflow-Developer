@@ -1,0 +1,276 @@
+{
+  "name": "Youtube Log",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        48,
+        64
+      ],
+      "id": "d1d38389-73ff-4a6f-92d6-9318a085ce45",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.feed_url }}",
+        "options": {
+          "ignoreSSL": false
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        64
+      ],
+      "id": "686fc1df-2edd-48df-8ef6-4703a2243898",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "jsCode": "const timeZone = \"Europe/Bucharest\";\nconst today = new Date().toLocaleDateString(\"en-CA\", { timeZone });\n\nreturn items\n  .map(item => {\n    const pubDate = new Date(item.json.pubDate || item.json.isoDate || item.json.published);\n    const postDate = pubDate.toLocaleDateString(\"en-CA\", { timeZone });\n\n    return {\n      json: {\n        date: postDate,\n        guid: item.json.guid || item.json.link || item.json.id || item.json.title,\n        title: item.json.title || \"(no title)\",\n        link: item.json.link || \"\",\n        creator: item.json.author || $('Convert to RSS').first().json.creator || \"Unknown\",\n        platform: \"YouTube\"\n      }\n    };\n  })\n  .filter(item => item.json.date === today);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        64
+      ],
+      "id": "718ae645-e6a4-4179-b443-10c3b7d60186",
+      "name": "Code",
+      "executeOnce": false
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Social Media Daily",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "DATE": "={{ $json.date }}",
+            "PLATFORM": "Youtube",
+            "TITLE": "={{ $json.title }}",
+            "CONTENT LINK": "={{ $json.link }}",
+            "STATUS": "Not Sent",
+            "GUID": "={{ $json.guid }}",
+            "CREATOR": "={{ $json.creator }}"
+          },
+          "matchingColumns": [
+            "GUID"
+          ],
+          "schema": [
+            {
+              "id": "DATE",
+              "displayName": "DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "PLATFORM",
+              "displayName": "PLATFORM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CREATOR",
+              "displayName": "CREATOR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TITLE",
+              "displayName": "TITLE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CONTENT",
+              "displayName": "CONTENT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CONTENT LINK",
+              "displayName": "CONTENT LINK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "GUID",
+              "displayName": "GUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1152,
+        64
+      ],
+      "id": "593437c6-3ef2-41a5-b5e1-50b1ede33a69",
+      "name": "Google Sheets"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"input_link\": \"https://www.youtube.com/@BBCNews\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        272,
+        64
+      ],
+      "id": "4b18354b-847b-496a-b7dd-907a3e9f7b99",
+      "name": "Input YouTube Link"
+    },
+    {
+      "parameters": {
+        "jsCode": "const link = $input.first().json.input_link || '';\nlet feedUrl = '';\nlet creator = 'Unknown';\n\nif (link.includes('youtube.com/channel/')) {\n  const channelId = link.split('/channel/')[1].split(/[/?#]/)[0];\n  feedUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;\n  creator = channelId;\n} else if (link.includes('youtube.com/@')) {\n  const username = link.split('/@')[1].split(/[/?#]/)[0];\n  feedUrl = `https://www.youtube.com/feeds/videos.xml?user=${username}`;\n  creator = username;\n} else {\n  throw new Error('Invalid YouTube link');\n}\n\nreturn [{\n  json: {\n    feed_url: feedUrl,\n    creator: creator\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        64
+      ],
+      "id": "9ef5ce21-69b3-4971-a883-807ddc85c3b3",
+      "name": "Code1"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Input YouTube Link",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input YouTube Link": {
+      "main": [
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

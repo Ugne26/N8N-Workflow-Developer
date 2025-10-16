@@ -1,0 +1,1150 @@
+{
+  "name": "Daily Default Platform Summary",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -864,
+        608
+      ],
+      "id": "c5e8ac41-0ef3-4bb1-8008-cbbc8a3ae448",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Social Media Daily",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "STATUS",
+              "lookupValue": "Not Sent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -640,
+        608
+      ],
+      "id": "be57acfe-2742-4dc5-8ebf-15e78ea66dd4",
+      "name": "Google Sheets"
+    },
+    {
+      "parameters": {
+        "jsCode": "const timeZone = \"Europe/Bucharest\";\nconst now = new Date();\nconst today = now.toLocaleDateString(\"en-CA\", { timeZone }); // e.g. 2025-05-13\n\nconst validPlatforms = [\"medium\", \"youtube\", \"instagram\", \"reddit\", \"twitter\", \"facebook\"];\n\nreturn items.filter(item => {\n  const raw = (item.json.DATE || item.json.date || \"\").toString().trim();\n  const normalized = new Date(raw).toLocaleDateString(\"en-CA\", { timeZone });\n\n  return normalized === today && validPlatforms.includes(item.json.PLATFORM?.toLowerCase());\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -416,
+        608
+      ],
+      "id": "e6a183a1-e6be-4d7c-b09e-bfba59375055",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "let prompt = `You are a summarization assistant. Format the following social media posts as clean email HTML.\n\nInstructions:\n- Each summary should be 1–2 concise sentences\n- Begin each summary with the creator/source in UPPERCASE using <strong> (e.g., <strong>BBCNEWS:</strong>)\n- Add a <a href=\"...\" target=\"_blank\">Read more</a> link if available\n- Use <br><br> to separate each post\n- Wrap the entire output in: <div style=\"font-family: Arial, sans-serif; font-size: 13px; color: #333;\"> ... </div>\n- Do not include greeting or closing\n\nHere are the posts:\\n\\n`;\n\nfor (const item of items) {\n  const creator = (item.json.CREATOR || \"UNKNOWN\").toUpperCase();\n  const content = (item.json.CONTENT || \"\").replace(/\\s+/g, \" \").trim().slice(0, 350);\n  const link = item.json[\"CONTENT LINK\"] || item.json.LINK || \"\";\n  const readMore = link ? `<a href=\"${link}\" target=\"_blank\">Read more</a>` : \"\";\n  prompt += `<strong>${creator}:</strong> ${content} ${readMore}\\n\\n`;\n}\n\nreturn [{ json: { gptPrompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        240
+      ],
+      "id": "8c11e7fa-80fc-48e0-9665-df2ffba18ead",
+      "name": "Youtube"
+    },
+    {
+      "parameters": {
+        "jsCode": "let prompt = `You are a summarization assistant. Format the following social media posts as clean email HTML.\n\nInstructions:\n- Each summary should be 1–2 concise sentences\n- Begin each summary with the creator/source in UPPERCASE using <strong> (e.g., <strong>BBCNEWS:</strong>)\n- Add a <a href=\"...\" target=\"_blank\">Read more</a> link if available\n- Use <br><br> to separate each post\n- Wrap the entire output in: <div style=\"font-family: Arial, sans-serif; font-size: 13px; color: #333;\"> ... </div>\n- Do not include greeting or closing\n\nHere are the posts:\\n\\n`;\n\nfor (const item of items) {\n  const creator = (item.json.CREATOR || \"UNKNOWN\").toUpperCase();\n  const content = (item.json.CONTENT || \"\").replace(/\\s+/g, \" \").trim().slice(0, 350);\n  const link = item.json[\"CONTENT LINK\"] || item.json.LINK || \"\";\n  const readMore = link ? `<a href=\"${link}\" target=\"_blank\">Read more</a>` : \"\";\n  prompt += `<strong>${creator}:</strong> ${content} ${readMore}\\n\\n`;\n}\n\nreturn [{ json: { gptPrompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "694caa02-92d0-4f08-9746-0f870dadb594",
+      "name": "Instagram"
+    },
+    {
+      "parameters": {
+        "jsCode": "let prompt = `You are a summarization assistant. Format the following social media posts as clean email HTML.\n\nInstructions:\n- Each summary should be 1–2 concise sentences\n- Begin each summary with the creator/source in UPPERCASE using <strong> (e.g., <strong>BBCNEWS:</strong>)\n- Add a <a href=\"...\" target=\"_blank\">Read more</a> link if available\n- Use <br><br> to separate each post\n- Wrap the entire output in: <div style=\"font-family: Arial, sans-serif; font-size: 13px; color: #333;\"> ... </div>\n- Do not include greeting or closing\n\nHere are the posts:\\n\\n`;\n\nfor (const item of items) {\n  const creator = (item.json.CREATOR || \"UNKNOWN\").toUpperCase();\n  const content = (item.json.CONTENT || \"\").replace(/\\s+/g, \" \").trim().slice(0, 350);\n  const link = item.json[\"CONTENT LINK\"] || item.json.LINK || \"\";\n  const readMore = link ? `<a href=\"${link}\" target=\"_blank\">Read more</a>` : \"\";\n  prompt += `<strong>${creator}:</strong> ${content} ${readMore}\\n\\n`;\n}\n\nreturn [{ json: { gptPrompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        480
+      ],
+      "id": "d3792832-391f-487a-86a2-94220ab2b189",
+      "name": "Facebook"
+    },
+    {
+      "parameters": {
+        "jsCode": "let prompt = `You are a summarization assistant. Format the following social media posts as clean email HTML.\n\nInstructions:\n- Each summary should be 1–2 concise sentences\n- Begin each summary with the creator/source in UPPERCASE using <strong> (e.g., <strong>BBCNEWS:</strong>)\n- Add a <a href=\"...\" target=\"_blank\">Read more</a> link if available\n- Use <br><br> to separate each post\n- Wrap the entire output in: <div style=\"font-family: Arial, sans-serif; font-size: 13px; color: #333;\"> ... </div>\n- Do not include greeting or closing\n\nHere are the posts:\\n\\n`;\n\nfor (const item of items) {\n  const creator = (item.json.CREATOR || \"UNKNOWN\").toUpperCase();\n  const content = (item.json.CONTENT || \"\").replace(/\\s+/g, \" \").trim().slice(0, 350);\n  const link = item.json[\"CONTENT LINK\"] || item.json.LINK || \"\";\n  const readMore = link ? `<a href=\"${link}\" target=\"_blank\">Read more</a>` : \"\";\n  prompt += `<strong>${creator}:</strong> ${content} ${readMore}\\n\\n`;\n}\n\nreturn [{ json: { gptPrompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        720
+      ],
+      "id": "0ee8fda3-b11c-4ab4-9bc7-3ff602564113",
+      "name": "Twitter/X"
+    },
+    {
+      "parameters": {
+        "jsCode": "let prompt = `You are a summarization assistant. Format the following social media posts as clean email HTML.\n\nInstructions:\n- Each summary should be 1–2 concise sentences\n- Begin each summary with the creator/source in UPPERCASE using <strong> (e.g., <strong>BBCNEWS:</strong>)\n- Add a <a href=\"...\" target=\"_blank\">Read more</a> link if available\n- Use <br><br> to separate each post\n- Wrap the entire output in: <div style=\"font-family: Arial, sans-serif; font-size: 13px; color: #333;\"> ... </div>\n- Do not include greeting or closing\n\nHere are the posts:\\n\\n`;\n\nfor (const item of items) {\n  const creator = (item.json.CREATOR || \"UNKNOWN\").toUpperCase();\n  const content = (item.json.CONTENT || \"\").replace(/\\s+/g, \" \").trim().slice(0, 350);\n  const link = item.json[\"CONTENT LINK\"] || item.json.LINK || \"\";\n  const readMore = link ? `<a href=\"${link}\" target=\"_blank\">Read more</a>` : \"\";\n  prompt += `<strong>${creator}:</strong> ${content} ${readMore}\\n\\n`;\n}\n\nreturn [{ json: { gptPrompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        960
+      ],
+      "id": "37046e3b-820f-4bf6-a046-934dda89997e",
+      "name": "Medium"
+    },
+    {
+      "parameters": {
+        "jsCode": "let prompt = `You are a summarization assistant. Format the following social media posts as clean email HTML.\n\nInstructions:\n- Each summary should be 1–2 concise sentences\n- Begin each summary with the creator/source in UPPERCASE using <strong> (e.g., <strong>BBCNEWS:</strong>)\n- Add a <a href=\"...\" target=\"_blank\">Read more</a> link if available\n- Use <br><br> to separate each post\n- Wrap the entire output in: <div style=\"font-family: Arial, sans-serif; font-size: 13px; color: #333;\"> ... </div>\n- Do not include greeting or closing\n\nHere are the posts:\\n\\n`;\n\nfor (const item of items) {\n  const creator = (item.json.CREATOR || \"UNKNOWN\").toUpperCase();\n  const content = (item.json.CONTENT || \"\").replace(/\\s+/g, \" \").trim().slice(0, 350);\n  const link = item.json[\"CONTENT LINK\"] || item.json.LINK || \"\";\n  const readMore = link ? `<a href=\"${link}\" target=\"_blank\">Read more</a>` : \"\";\n  prompt += `<strong>${creator}:</strong> ${content} ${readMore}\\n\\n`;\n}\n\nreturn [{ json: { gptPrompt: prompt } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        1200
+      ],
+      "id": "8d8aa29d-d29c-4dc8-8d67-92ebfc69abf3",
+      "name": "Reddit"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "06cb607f-f3d6-4522-8e6c-4488448a12cc",
+              "leftValue": "={{ $json.PLATFORM }}",
+              "rightValue": "Instagram",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "45c57d59-2050-40a0-8ffb-0d1fe70bf8e1",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "41bb59a6-4405-4c22-9e0c-ba7bda01c9cc",
+              "leftValue": "={{ $json.PLATFORM }}",
+              "rightValue": "Youtube",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        240
+      ],
+      "id": "d876316c-64db-4339-8b49-324569806f5f",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "35ddd258-353a-4255-a448-b3886dc31465",
+              "leftValue": "={{ $json.PLATFORM }}",
+              "rightValue": "Facebook",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        480
+      ],
+      "id": "354281e6-3faf-48f8-8bb9-7c16c345e1b8",
+      "name": "Filter3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "dd6b905c-505e-4be2-a363-a35c0142e565",
+              "leftValue": "={{ $json.PLATFORM }}",
+              "rightValue": "Twitter",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        720
+      ],
+      "id": "5157ee0d-c839-49ba-aa9b-4031f2320919",
+      "name": "Filter5"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "09d5edc4-2a97-4b1a-89e5-8f27f3adaf38",
+              "leftValue": "={{ $json.PLATFORM }}",
+              "rightValue": "Medium",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        960
+      ],
+      "id": "983660bf-44dd-4f6d-9943-db4b9f0b0006",
+      "name": "Filter4"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d15388e0-0137-4df7-a9d3-cbbef9e58b59",
+              "leftValue": "={{ $json.PLATFORM }}",
+              "rightValue": "Reddit",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        1200
+      ],
+      "id": "dbd419f8-b387-4519-9524-7dd2290f3945",
+      "name": "Filter6"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gptPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        0
+      ],
+      "id": "500fce4d-2690-43a4-bcf8-5092dfc6c469",
+      "name": "OpenAI"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gptPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        240
+      ],
+      "id": "f5756e08-6333-42d2-b04b-257f9ba7ea01",
+      "name": "OpenAI1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gptPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        480
+      ],
+      "id": "51d95ddd-6d48-43b1-bb12-b6ca4b9be510",
+      "name": "OpenAI2"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gptPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        720
+      ],
+      "id": "03b24e56-251a-448f-9dce-d3a6a9ff9203",
+      "name": "OpenAI3"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gptPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        960
+      ],
+      "id": "c16d301e-52f7-4c3d-8ef1-6458033e9586",
+      "name": "OpenAI4"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.gptPrompt }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        1200
+      ],
+      "id": "63057cb4-4b40-47bf-ba5f-7bb10c7580b3",
+      "name": "OpenAI5"
+    },
+    {
+      "parameters": {
+        "sendTo": "balnaityteugne@gmail.com",
+        "subject": "Your Daily Instagram Digest",
+        "message": "={{ $json.message.content }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Lunaris"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        0
+      ],
+      "id": "fc524e35-b1ea-4923-9726-ff397ad0a0f9",
+      "name": "Gmail",
+      "webhookId": "d22eb41c-28bf-4585-9e81-d66c90b1c57b"
+    },
+    {
+      "parameters": {
+        "sendTo": "balnaityteugne@gmail.com",
+        "subject": "YouTube Watchlist Recap",
+        "message": "={{ $json.message.content }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Lunaris"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        240
+      ],
+      "id": "87de0c32-9b8b-4b10-84da-19f3308642df",
+      "name": "Gmail1",
+      "webhookId": "d22eb41c-28bf-4585-9e81-d66c90b1c57b"
+    },
+    {
+      "parameters": {
+        "sendTo": "balnaityteugne@gmail.com",
+        "subject": "Daily Facebook Highlights",
+        "message": "={{ $json.message.content }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Lunaris"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        480
+      ],
+      "id": "f40de892-89a3-4106-8d66-33ea1ba4a395",
+      "name": "Gmail2",
+      "webhookId": "d22eb41c-28bf-4585-9e81-d66c90b1c57b"
+    },
+    {
+      "parameters": {
+        "sendTo": "balnaityteugne@gmail.com",
+        "subject": "Your Twitter Recap",
+        "message": "={{ $json.message.content }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Lunaris"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        720
+      ],
+      "id": "2f8c22d9-add6-4ea1-874e-dcbe524591ff",
+      "name": "Gmail3",
+      "webhookId": "d22eb41c-28bf-4585-9e81-d66c90b1c57b"
+    },
+    {
+      "parameters": {
+        "sendTo": "balnaityteugne@gmail.com",
+        "subject": "Today’s Best Reads on Medium",
+        "message": "={{ $json.message.content }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Lunaris"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        960
+      ],
+      "id": "f68e5e24-38eb-46e2-843a-9ef70bd5bad5",
+      "name": "Gmail4",
+      "webhookId": "d22eb41c-28bf-4585-9e81-d66c90b1c57b"
+    },
+    {
+      "parameters": {
+        "sendTo": "balnaityteugne@gmail.com",
+        "subject": "What Reddit Is Talking About",
+        "message": "={{ $json.message.content }}",
+        "options": {
+          "appendAttribution": false,
+          "senderName": "Lunaris"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        1200
+      ],
+      "id": "f58b42d2-8b1f-40bd-9e2c-ab5d5ad88189",
+      "name": "Gmail5",
+      "webhookId": "d22eb41c-28bf-4585-9e81-d66c90b1c57b"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Social Media Daily",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "STATUS",
+              "lookupValue": "Not Sent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1184,
+        608
+      ],
+      "id": "8a3a490e-34d2-4e71-ae06-ce146942d76a",
+      "name": "Google Sheets1"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Social Media Daily",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "STATUS": "Sent",
+            "GUID": "={{ $json.GUID }}"
+          },
+          "matchingColumns": [
+            "GUID"
+          ],
+          "schema": [
+            {
+              "id": "DATE",
+              "displayName": "DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "PLATFORM",
+              "displayName": "PLATFORM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CREATOR",
+              "displayName": "CREATOR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TITLE",
+              "displayName": "TITLE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CONTENT",
+              "displayName": "CONTENT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "CONTENT LINK",
+              "displayName": "CONTENT LINK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "GUID",
+              "displayName": "GUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "VIDEOID",
+              "displayName": "VIDEOID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1408,
+        608
+      ],
+      "id": "3056e820-cb49-404f-be8b-e6db5df6225d",
+      "name": "Google Sheets2"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter3",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter5",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter4",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Instagram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Youtube",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter3": {
+      "main": [
+        [
+          {
+            "node": "Facebook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter5": {
+      "main": [
+        [
+          {
+            "node": "Twitter/X",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter4": {
+      "main": [
+        [
+          {
+            "node": "Medium",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter6": {
+      "main": [
+        [
+          {
+            "node": "Reddit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Instagram": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Youtube": {
+      "main": [
+        [
+          {
+            "node": "OpenAI1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Facebook": {
+      "main": [
+        [
+          {
+            "node": "OpenAI2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Twitter/X": {
+      "main": [
+        [
+          {
+            "node": "OpenAI3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Medium": {
+      "main": [
+        [
+          {
+            "node": "OpenAI4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reddit": {
+      "main": [
+        [
+          {
+            "node": "OpenAI5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI4": {
+      "main": [
+        [
+          {
+            "node": "Gmail4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI3": {
+      "main": [
+        [
+          {
+            "node": "Gmail3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI2": {
+      "main": [
+        [
+          {
+            "node": "Gmail2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI1": {
+      "main": [
+        [
+          {
+            "node": "Gmail1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI5": {
+      "main": [
+        [
+          {
+            "node": "Gmail5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail2": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail3": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail4": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail5": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets1": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

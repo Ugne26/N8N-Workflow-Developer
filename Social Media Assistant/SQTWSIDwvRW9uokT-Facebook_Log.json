@@ -1,0 +1,558 @@
+{
+  "name": "Facebook Log",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -224,
+        -352
+      ],
+      "id": "09aefb60-ba85-43ea-8b9d-cc7aafba6521",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "url": "https://rss.app/feeds/YC0YwyOM98IQDCGA.xml",
+        "options": {
+          "ignoreSSL": false
+        }
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        -352
+      ],
+      "id": "f7d47c07-cdf1-4521-9403-4b96668d6460",
+      "name": "RSS Read"
+    },
+    {
+      "parameters": {
+        "jsCode": "const timeZone = \"Europe/Bucharest\";\n\n// Get today's date in the desired timezone (formatted as YYYY-MM-DD)\nconst now = new Date();\nconst today = now.toLocaleDateString(\"en-CA\", { timeZone });\n\nreturn items\n  .map(item => {\n    const postDate = new Date(item.json.pubDate);\n    const postLocal = postDate.toLocaleDateString(\"en-CA\", { timeZone });\n\n    return {\n      json: {\n        guid: item.json.guid || item.json.link,\n        title: item.json.title,\n        link: item.json.link,\n        date: postLocal,\n        creator: item.json.creator || item.json[\"dc:creator\"] || \"unknown\",\n        snippet: item.json.contentSnippet || item.json.content || \"(no caption)\"\n      }\n    };\n  })\n  .filter(item => item.json.date === today);\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -352
+      ],
+      "id": "a096d66e-5a7a-4b37-a719-c0cc5287d139",
+      "name": "Code",
+      "executeOnce": false,
+      "alwaysOutputData": false,
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Social Media Daily",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "DATE": "={{ $json.date }}",
+            "CREATOR": "={{ $json.creator }}",
+            "CONTENT": "={{ $json.snippet }}",
+            "CONTENT LINK": "={{ $json.link }}",
+            "STATUS": "Not Sent",
+            "GUID": "={{ $json.guid }}",
+            "PLATFORM": "Facebook"
+          },
+          "matchingColumns": [
+            "GUID"
+          ],
+          "schema": [
+            {
+              "id": "DATE",
+              "displayName": "DATE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "PLATFORM",
+              "displayName": "PLATFORM",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CREATOR",
+              "displayName": "CREATOR",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TITLE",
+              "displayName": "TITLE",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CONTENT",
+              "displayName": "CONTENT",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "CONTENT LINK",
+              "displayName": "CONTENT LINK",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "STATUS",
+              "displayName": "STATUS",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "GUID",
+              "displayName": "GUID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        -352
+      ],
+      "id": "52efdc1e-b5bd-4236-a7e5-b533938431e7",
+      "name": "Google Sheets"
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {
+    "RSS Read": [
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "\"I'll carry it for life\" 🏏 Virat Kohli on his decision to retire from Test cricket and the cricket world's reaction 🫂",
+          "link": "https://www.facebook.com/SkySports/videos/1616521082400695/",
+          "pubDate": "Tue, 13 May 2025 19:50:50 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-iad3-1.xx.fbcdn.net/v/t15.5256-10/497313113_565818766577220_4740820330031521570_n.jpg?stp=dst-jpg_p600x600_tt6&_nc_cat=102&ccb=1-7&_nc_sid=40d385&_nc_ohc=6XQ2Og_XWKYQ7kNvwGD4ppH&_nc_oc=AdkzYJso1K2HyTinvkchdx3pdXwM4wA69PqXFEvYeShXJA9hvvPql8Z3ym1UFx86FsM&_nc_zt=23&_nc_ht=scontent-iad3-1.xx&_nc_gid=vUi8AqKkUhkaGf-68TqejQ&oh=00_AfKp-arGmp1pGkeGObHXBnUb3zRNNGBvBtSeDq3WQDPF6A&oe=6828C2E9\" style=\"width: 100%;\" /><div>\"I'll carry it for life\" 🏏<br> Virat Kohli on his decision to retire from Test cricket and the cricket world's reaction 🫂</div></div>",
+          "contentSnippet": "\"I'll carry it for life\" 🏏\n Virat Kohli on his decision to retire from Test cricket and the cricket world's reaction 🫂",
+          "guid": "c05a6c3290fd2d0830642ee17cc73f9a",
+          "isoDate": "2025-05-12T19:50:50.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "\"Every day I just try to be the best version of myself\" 💪 Emma Raducanu on how she's staying positive on tour.  #LexusT...",
+          "link": "https://www.facebook.com/SkySports/videos/2129485900901415/",
+          "pubDate": "Mon, 12 May 2025 17:50:37 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-iad3-2.xx.fbcdn.net/v/t15.5256-10/497779333_1229194425588503_569481286119062981_n.jpg?stp=dst-jpg_p600x600_tt6&_nc_cat=111&ccb=1-7&_nc_sid=40d385&_nc_ohc=N-7J1PC6UbIQ7kNvwHcGjkn&_nc_oc=Adkw9nv-SzdunJNUMsOhbvBinW2lKbzBadoU9FbzBMgFCtHGzoI1iepzBSBNlGqbQ_4&_nc_zt=23&_nc_ht=scontent-iad3-2.xx&_nc_gid=vUi8AqKkUhkaGf-68TqejQ&oh=00_AfJA0N1Duj1SEAH4AeUDQ3t1TQ5GAbttDapFAF2A9Flk9g&oe=6828F55C\" style=\"width: 100%;\" /><div>\"Every day I just try to be the best version of myself\" 💪<br> Emma Raducanu on how she's staying positive on tour. <br> #LexusTennis</div></div>",
+          "contentSnippet": "\"Every day I just try to be the best version of myself\" 💪\n Emma Raducanu on how she's staying positive on tour. \n #LexusTennis",
+          "guid": "2a91851d3a1e707ccacc0a7d18824d9f",
+          "isoDate": "2025-05-12T17:50:37.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "\"By 2028 Goodison should be demolished\"  Former Everton owner Farhad Moshiri says Everton had to leave Goodison Park to...",
+          "link": "https://www.facebook.com/SkySports/videos/1076250781031951/",
+          "pubDate": "Mon, 12 May 2025 17:46:57 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-iad3-1.xx.fbcdn.net/v/t15.5256-10/496822780_1054295309905423_8416905116817014712_n.jpg?stp=dst-jpg_p600x600_tt6&_nc_cat=104&ccb=1-7&_nc_sid=40d385&_nc_ohc=pS7ZPG4d6jUQ7kNvwEE4OpP&_nc_oc=AdmQKtzS9lY4fhJ44aBuOz-1XKIgjGSuSGXfNYveSS63MEY5bULUN1z015pTlJPQxrU&_nc_zt=23&_nc_ht=scontent-iad3-1.xx&_nc_gid=vUi8AqKkUhkaGf-68TqejQ&oh=00_AfJaaljmU_eZPa8eGmtOOclr0zARZppJL_A5xPG82X-mog&oe=6828D51E\" style=\"width: 100%;\" /><div>\"By 2028 Goodison should be demolished\" <br> Former Everton owner Farhad Moshiri says Everton had to leave Goodison Park to progress.</div></div>",
+          "contentSnippet": "\"By 2028 Goodison should be demolished\" \n Former Everton owner Farhad Moshiri says Everton had to leave Goodison Park to progress.",
+          "guid": "5149416e0c4310723bb540be2dbe075a",
+          "isoDate": "2025-05-12T17:46:57.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "\"I'm really embarrassed that in 26 games we have won six\"  Ruben Amorim on Manchester United's season since he took over...",
+          "link": "https://www.facebook.com/SkySports/videos/1037349988351315/",
+          "pubDate": "Mon, 12 May 2025 17:28:02 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-iad3-1.xx.fbcdn.net/v/t15.5256-10/496790668_716095374096226_4984983241310550897_n.jpg?stp=dst-jpg_p600x600_tt6&_nc_cat=104&ccb=1-7&_nc_sid=40d385&_nc_ohc=xaJG8C2gwqoQ7kNvwEYd24l&_nc_oc=AdmyNXsYJ028mx1Cc6OEFSbHyk-LIrOz5u4sLP-kFoIYqx65Ue2p9X-dGrF3d-mFFCs&_nc_zt=23&_nc_ht=scontent-iad3-1.xx&_nc_gid=vUi8AqKkUhkaGf-68TqejQ&oh=00_AfJMNx0yIVgxZ3-HOUJ89uMqC1k2MLvZcEJaJtJxWug8bQ&oe=6828D35D\" style=\"width: 100%;\" /><div>\"I'm really embarrassed that in 26 games we have won six\" <br> Ruben Amorim on Manchester United's season since he took over as manager 🔴</div></div>",
+          "contentSnippet": "\"I'm really embarrassed that in 26 games we have won six\" \n Ruben Amorim on Manchester United's season since he took over as manager 🔴",
+          "guid": "6947375d0847742623f9d8d4327c006d",
+          "isoDate": "2025-05-12T17:28:02.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Grand National and Cheltenham Gold Cup winner Rachael Blackmore has announced her retirement at the age of 35 🚨🏇",
+          "link": "https://www.facebook.com/SkySports/posts/pfbid02io9kTSeJzhVSr3ztczZYq7MdHYTc2F5N4rz2oYUERm5MbJudi9ZPZ3NKhyHLymt7l",
+          "pubDate": "Mon, 12 May 2025 17:05:19 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-iad3-1.xx.fbcdn.net/v/t39.30808-6/496934503_1244961140326681_8411958795738707043_n.jpg?stp=dst-jpg_p843x403_tt6&_nc_cat=1&ccb=1-7&_nc_sid=e5c1b6&_nc_ohc=O-Cq8v5HLSsQ7kNvwGwSqcu&_nc_oc=AdkvfysPxgozyGTdYOTGXbA374FHRrfwgFyaiVxY94Fg2k6e6Y0rGo7jmd6cmu9pANk&_nc_zt=23&_nc_ht=scontent-iad3-1.xx&_nc_gid=vUi8AqKkUhkaGf-68TqejQ&oh=00_AfJO-E0U9AThgAOHyfIChylCRgbT-bnai9XNnK4TGXxmUA&oe=6828E7DF\" style=\"width: 100%;\" /><div>Grand National and Cheltenham Gold Cup winner Rachael Blackmore has announced her retirement at the age of 35 🚨🏇</div></div>",
+          "contentSnippet": "Grand National and Cheltenham Gold Cup winner Rachael Blackmore has announced her retirement at the age of 35 🚨🏇",
+          "guid": "2343350e327691c0e59d1b01da38e10d",
+          "isoDate": "2025-05-12T17:05:19.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Blatter: I am clean with my conscience; Platini: The truth has come to light",
+          "link": "https://www.facebook.com/SkySports/posts/10160127335563762/",
+          "pubDate": "Fri, 08 Jul 2022 09:11:53 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292508221_276038951394710_2768107059056284987_n.jpg?_nc_cat=1&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=rtsOdf9i0v0AX-Su4QS&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT_ih7_RSrktO6fENL_xK704V81x5lTsyS-IjutEXKITpg&oe=62CC9147\" style=\"width: 100%;\" /><div>🗣️ \"I am clean with my conscience.\"\n\nSepp Blatter spoke to the media ahead of today's verdict, while Michel Platini has released a statement saying \"justice has been done.\" 🎤</div></div>",
+          "contentSnippet": "🗣️ \"I am clean with my conscience.\"\n\nSepp Blatter spoke to the media ahead of today's verdict, while Michel Platini has released a statement saying \"justice has been done.\" 🎤",
+          "guid": "d37bef8330d00d2277ff876e7abf8d7d",
+          "isoDate": "2022-07-08T09:11:53.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Blatter, Platini cleared of corruption charges by Swiss court",
+          "link": "https://www.facebook.com/SkySports/posts/10160127299303762/",
+          "pubDate": "Fri, 08 Jul 2022 08:30:27 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292264301_801940877849726_5210144857674067792_n.jpg?_nc_cat=1&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=yqLResLMsj4AX9sXypv&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT-f1cTOYG2KpEYmbR1x6-Uj4GQcumojpSgKu0dJa54JYw&oe=62CC0EED\" style=\"width: 100%;\" /><div>BREAKING: Former FIFA president Sepp Blatter and former UEFA president Michel Platini have been acquitted of corruption charges by a Swiss court. 🚨</div></div>",
+          "contentSnippet": "BREAKING: Former FIFA president Sepp Blatter and former UEFA president Michel Platini have been acquitted of corruption charges by a Swiss court. 🚨",
+          "guid": "44fc53cc4eb8c64c80436756cf1a260c",
+          "isoDate": "2022-07-08T08:30:27.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Ada Hegerberg reacts to win against Northern Ireland",
+          "link": "https://www.facebook.com/SkySports/posts/10160126665388762/",
+          "pubDate": "Thu, 07 Jul 2022 21:42:26 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292424008_720836135840451_2653805688972680821_n.jpg?_nc_cat=107&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=BS7oYNo2KaQAX8un8QU&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT8-RcO8Poq3r_zNJJpJC22CfYiPbhwn21E7-yPas9kNEA&oe=62CC2622\" style=\"width: 100%;\" /><div>🗣️ \"We've got to be ready for Monday.\" 💪\n\nNorway's Ada Hegerberg reacts after beating Northern Ireland 4-1 in the #WEURO2022</div></div>",
+          "contentSnippet": "🗣️ \"We've got to be ready for Monday.\" 💪\n\nNorway's Ada Hegerberg reacts after beating Northern Ireland 4-1 in the #WEURO2022",
+          "guid": "7ad02e8b7d16bdb86828fd8335e11e23",
+          "isoDate": "2022-07-07T21:42:26.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Biles and Rapinoe receive medal of freedom from President Biden",
+          "link": "https://www.facebook.com/SkySports/posts/10160126654408762/",
+          "pubDate": "Thu, 07 Jul 2022 21:30:29 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "🥇🥇👏\n\n\nSimone Biles and Megan Rapinoe were awarded the US Presidential Medal of Freedom at the White House on Thursday.",
+          "contentSnippet": "🥇🥇👏\n\n\nSimone Biles and Megan Rapinoe were awarded the US Presidential Medal of Freedom at the White House on Thursday.",
+          "guid": "ade7be6b4f4445edbe7199e7c9cf9711",
+          "isoDate": "2022-07-07T21:30:29.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Tomáš Souček has a new training partner..",
+          "link": "https://www.facebook.com/SkySports/posts/10160126464688762/",
+          "pubDate": "Thu, 07 Jul 2022 18:48:43 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291944326_373474884885224_5547759138439327079_n.jpg?_nc_cat=1&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=I8zDPd-SPZcAX9tvudH&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT_e5R4drcapusZGLkXCXHoaHNd5VxhRyG1FsAIvljTmjQ&oe=62CC5B7C\" style=\"width: 100%;\" /><div>Tomáš Souček has a new training partner... 🥰 ❤️</div></div>",
+          "contentSnippet": "Tomáš Souček has a new training partner... 🥰 ❤️",
+          "guid": "36913c2ddc185ba7667eb2efdd759245",
+          "isoDate": "2022-07-07T18:48:43.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Nadal to pull out of Wimbledon",
+          "link": "https://www.facebook.com/SkySports/posts/10160126432248762/",
+          "pubDate": "Thu, 07 Jul 2022 18:26:37 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291480888_1412760515859706_604404164919804105_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=tAi2lOJovUQAX88Uh2Q&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT9uA-Q_-EZqokJsXnldW2iDgMGv83YYU8D44hakxpqz5A&oe=62CD6306\" style=\"width: 100%;\" /><div>Former Chelsea defender Andreas Christensen is officially presented as a Barcelona player today 🔴🔵</div></div>",
+          "contentSnippet": "Former Chelsea defender Andreas Christensen is officially presented as a Barcelona player today 🔴🔵",
+          "guid": "412a7d867a729f9b8ff9718dd172dc7d",
+          "isoDate": "2022-07-07T18:26:37.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Nadal to pull out of Wimbledon",
+          "link": "https://www.facebook.com/SkySports/posts/10160126421123762/",
+          "pubDate": "Thu, 07 Jul 2022 18:17:54 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292480595_409764664538516_7151728139681612308_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=z9IksOi3leAAX8qsQnP&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT8tdJTeNAExPK1LtjjeIzi81NffGQGAwAAB81RdVM0aeA&oe=62CD2AC0\" style=\"width: 100%;\" /><div>BREAKING: Sky Sports News understands that Rafael Nadal is expected to pull out of Wimbledon due to an abdominal injury.</div></div>",
+          "contentSnippet": "BREAKING: Sky Sports News understands that Rafael Nadal is expected to pull out of Wimbledon due to an abdominal injury.",
+          "guid": "95242c333c6cdff0fc9113a4deebc03c",
+          "isoDate": "2022-07-07T18:17:54.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Zhou thanks marshals and Russell after escaping horror crash",
+          "link": "https://www.facebook.com/SkySports/posts/10160126393743762/",
+          "pubDate": "Thu, 07 Jul 2022 18:01:39 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292103314_619156412711803_1106851684587826696_n.jpg?_nc_cat=100&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=0dimt3ZuKgAAX9O8iH2&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT8PTPDLQ3Nf193txvbPAl4G8KlADbhZClc0WzZIsfs3iA&oe=62CCA45B\" style=\"width: 100%;\" /><div>🗣️ \"I was waiting for them to maybe flip my car over.\"\n\nZhou Guanyu discusses how he got out of his Alfa Romeo following his crash at Silverstone.</div></div>",
+          "contentSnippet": "🗣️ \"I was waiting for them to maybe flip my car over.\"\n\nZhou Guanyu discusses how he got out of his Alfa Romeo following his crash at Silverstone.",
+          "guid": "0df454e49c3f7bb82e7e30c6a9c2e87f",
+          "isoDate": "2022-07-07T18:01:39.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Cristiano Ronald ",
+          "link": "https://www.facebook.com/SkySports/posts/10160126350908762/",
+          "pubDate": "Thu, 07 Jul 2022 17:39:58 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291969321_1077025933205915_1388276846485346204_n.jpg?_nc_cat=1&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=vHmMJ2YquG0AX8Z3kOu&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT_zjd-SrejP3ZrzJux16BbE9MZF1J3aySaE4vrDRKQVpw&oe=62CD8F2C\" style=\"width: 100%;\" /><div>BREAKING: Cristiano Ronaldo will not be part of the Manchester United squad scheduled to depart for the pre-season tour of Thailand and Australia on Friday 🚨</div></div>",
+          "contentSnippet": "BREAKING: Cristiano Ronaldo will not be part of the Manchester United squad scheduled to depart for the pre-season tour of Thailand and Australia on Friday 🚨",
+          "guid": "2e10796b13e1b355ff9238183f00c0b9",
+          "isoDate": "2022-07-07T17:39:58.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Rybakina beats Halep in straight sets to qualify for final!",
+          "link": "https://www.facebook.com/SkySports/posts/10160126237053762/",
+          "pubDate": "Thu, 07 Jul 2022 16:31:56 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/286843101_790205272143874_7260886614283616167_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=_GzLnVNAe5UAX-2dXBH&_nc_oc=AQnQ0onS9z5n5krFIvyMboVOozLQpIbvr4dBguL1Wgpq0tQZC2DZd_iRNwwJCefxpoY&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT-oddSs5unGMWs880FSrFxspfxfWjnljsRyDQsp1yIWaA&oe=62CDD1C2\" style=\"width: 100%;\" /><div>BREAKING: Elena Rybakina beats Simona Halep in straight sets and will now face Ons Jabeur in the Wimbledon final 🎾</div></div>",
+          "contentSnippet": "BREAKING: Elena Rybakina beats Simona Halep in straight sets and will now face Ons Jabeur in the Wimbledon final 🎾",
+          "guid": "8ebf1c74851067c70636283f7aae0eb8",
+          "isoDate": "2022-07-07T16:31:56.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Joe Gomez has signed a new long term contract with Liverpool",
+          "link": "https://www.facebook.com/SkySports/posts/10160126142328762/",
+          "pubDate": "Thu, 07 Jul 2022 15:07:37 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/290493924_1717371388621186_5844448326670527360_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=1FOY6fATDk0AX_SNuBx&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT8t-4mG5J1tG9cIPVZw35jg5OEBzLj2oFajd94v4veJRw&oe=62CC96EB\" style=\"width: 100%;\" /><div>BREAKING: Joe Gomez has signed a new long term contract with Liverpool, which Sky Sports News understands to run until 2027 ✍️🔴</div></div>",
+          "contentSnippet": "BREAKING: Joe Gomez has signed a new long term contract with Liverpool, which Sky Sports News understands to run until 2027 ✍️🔴",
+          "guid": "dd6f686e1b8f122e2b477f1d34587bbb",
+          "isoDate": "2022-07-07T15:07:37.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Euro 2022 News Roundup",
+          "link": "https://www.facebook.com/SkySports/posts/10160126086448762/",
+          "pubDate": "Thu, 07 Jul 2022 14:18:49 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292133890_434837548315697_3334108154008257730_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=1OgUK7rjl68AX_DG_Uw&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT8YoCVs3fJxQmAojgjVNsdVoH3KlkFjqBDYFpX-e6C44w&oe=62CC6020\" style=\"width: 100%;\" /><div>Reaction from the Lionesses as England win the opening game of Euro 2022 in front of a record crowd.</div></div>",
+          "contentSnippet": "Reaction from the Lionesses as England win the opening game of Euro 2022 in front of a record crowd.",
+          "guid": "4498269ecf41987a4dd3fab5e003dd17",
+          "isoDate": "2022-07-07T14:18:49.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Clement Lenglet medical in next 24 hours",
+          "link": "https://www.facebook.com/SkySports/posts/10160126070038762/",
+          "pubDate": "Thu, 07 Jul 2022 14:02:42 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291773793_457807892378807_9168119991958598650_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=_NtcKnrYeg4AX8hQbwT&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT_0xeQbqAucHXuBJTfuuB--UEGy9XzGHP0XB7qIEFdJlg&oe=62CCAC4C\" style=\"width: 100%;\" /><div>BREAKING: Tottenham hope to give Clement Lenglet a medical in the next 24 hours.</div></div>",
+          "contentSnippet": "BREAKING: Tottenham hope to give Clement Lenglet a medical in the next 24 hours.",
+          "guid": "9cbe093885fe66853425bc7313e119e0",
+          "isoDate": "2022-07-07T14:02:42.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Stokes shares thoughts on Edgbaston incidents",
+          "link": "https://www.facebook.com/SkySports/posts/10160126067813762/",
+          "pubDate": "Thu, 07 Jul 2022 14:00:53 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/292362102_598597651840414_6078103701375506230_n.jpg?_nc_cat=104&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=7zOeyUEhBXkAX-U9ths&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT8QXOsctP_rq6zXGa_apmeXYJNw4yNZnuuy7BJwArk13A&oe=62CCF75E\" style=\"width: 100%;\" /><div>\"Absolutely no place for it in the game\"\n\nBen Stokes has shared his thoughts on the reports of alleged racism during the 5th Test against India at Edgbaston ⬇</div></div>",
+          "contentSnippet": "\"Absolutely no place for it in the game\"\n\nBen Stokes has shared his thoughts on the reports of alleged racism during the 5th Test against India at Edgbaston ⬇",
+          "guid": "7d9879e383b1a7d997333e15db28a56c",
+          "isoDate": "2022-07-07T14:00:53.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Cristiano Ronaldo: Manchester United willing to listen to offers for forward",
+          "link": "https://www.facebook.com/SkySports/posts/10160125908348762/",
+          "pubDate": "Thu, 07 Jul 2022 11:57:06 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "Manchester United are willing to listen to offers for Cristiano Ronaldo this summer  👀⬇\n\n\nCristiano Ronaldo has not reported back to Manchester United training citing family reasons, which the club have accepted; Sky Sports News has been told Ronaldos agent Jorge Mendes has been selling the Cristiano effect to clubs; Chelsea owner Todd Boehly has met with Mendes",
+          "contentSnippet": "Manchester United are willing to listen to offers for Cristiano Ronaldo this summer  👀⬇\n\n\nCristiano Ronaldo has not reported back to Manchester United training citing family reasons, which the club have accepted; Sky Sports News has been told Ronaldos agent Jorge Mendes has been selling the Cristiano effect to clubs; Chelsea owner Todd Boehly has met with Mendes",
+          "guid": "e4504da624327a4263aa883db77bee0e",
+          "isoDate": "2022-07-07T11:57:06.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Carlos Corberan Statement",
+          "link": "https://www.facebook.com/SkySports/posts/10160125903348762/",
+          "pubDate": "Thu, 07 Jul 2022 11:55:43 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.13418-10/292210770_597721521698863_4836070799239885585_n.jpg?stp=dst-jpg&_nc_cat=109&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=KbCA-tpCNyYAX-pc4BX&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT-PS1Mo5IgbwfxiTKCc04ny1zMIUQ7P5UFRzJ4N_hS2uA&oe=62CC84AE\" style=\"width: 100%;\" /><div>🗣️ \"There are times in life when the most honest thing to do is step aside\"\n\nA statement from Carlos Corberan after his departure from Huddersfield 👇</div></div>",
+          "contentSnippet": "🗣️ \"There are times in life when the most honest thing to do is step aside\"\n\nA statement from Carlos Corberan after his departure from Huddersfield 👇",
+          "guid": "95c3cfad73df612786f3cce4a805b9a0",
+          "isoDate": "2022-07-07T11:55:43.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Carlos Corberan leaves Huddersfield",
+          "link": "https://www.facebook.com/SkySports/posts/10160125821338762/",
+          "pubDate": "Thu, 07 Jul 2022 10:38:49 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291640758_430241229006968_4058040408579048746_n.jpg?_nc_cat=109&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=zJUru2wyaHQAX8YBBcL&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT9Jt5gEbHWeRYYRxmKBbsqCmliAWl8PBpUjzVJNVbdPCg&oe=62CC18E1\" style=\"width: 100%;\" /><div>BREAKING: Carlos Corberan has resigned as Huddersfield head coach after two years in the job ❌</div></div>",
+          "contentSnippet": "BREAKING: Carlos Corberan has resigned as Huddersfield head coach after two years in the job ❌",
+          "guid": "af7e9c774a40eedb39c641001ca484e4",
+          "isoDate": "2022-07-07T10:38:49.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Fran Kirby & Brooke Chaplen on career HIGHS and LOWS",
+          "link": "https://www.facebook.com/SkySports/posts/10160125771448762/",
+          "pubDate": "Thu, 07 Jul 2022 09:53:27 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291897425_988116405918762_2778026550903271501_n.jpg?_nc_cat=103&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=hDR-Wvlna1MAX_SrRS_&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT9x-iXWciLXmlLyW1Fa3BWujxnbH4ih71FSQvujvXQVFQ&oe=62CC7DFC\" style=\"width: 100%;\" /><div>Karen Carney chats with Fran Kirby and Brooke Chaplen 💬\n \n🔹 How sponsors have changed women's football\n🔹 Their career highs and lows\n🔹 What are they most looking forward to at the UEFA Women’s EURO 2022\n \nWhen more of us play, all of us win Visa \nSee Full episode here 👉 https://trib.al/2L10uNq</div></div>",
+          "contentSnippet": "Karen Carney chats with Fran Kirby and Brooke Chaplen 💬\n \n🔹 How sponsors have changed women's football\n🔹 Their career highs and lows\n🔹 What are they most looking forward to at the UEFA Women’s EURO 2022\n \nWhen more of us play, all of us win Visa \nSee Full episode here 👉 https://trib.al/2L10uNq",
+          "guid": "02e55837e4fae3cb5548104ea2db4f95",
+          "isoDate": "2022-07-07T09:53:27.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Nottingham Forest Transfer Update!",
+          "link": "https://www.facebook.com/SkySports/posts/10160125706478762/",
+          "pubDate": "Thu, 07 Jul 2022 09:33:39 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.5256-10/291941235_422032519835451_3383173710081742676_n.jpg?_nc_cat=111&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=2ZwGHIlTkY0AX_89FIZ&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT-nuvvMcWqQFfETdn3Vp0dp-bejK1_hJQUgFTomb-rJaw&oe=62CD94A9\" style=\"width: 100%;\" /><div>Nottingham Forest are in advanced talks with Liverpool over the signing of right back Neco Williams, and are also in talks with Bayern Munich over the  signing of left back Omar Richards ✍️</div></div>",
+          "contentSnippet": "Nottingham Forest are in advanced talks with Liverpool over the signing of right back Neco Williams, and are also in talks with Bayern Munich over the  signing of left back Omar Richards ✍️",
+          "guid": "83f9f935e134d8b8be1aefb0ae1c0bbd",
+          "isoDate": "2022-07-07T09:33:39.000Z"
+        }
+      },
+      {
+        "json": {
+          "creator": "Sky Sports",
+          "title": "Wiegman: Winning start is so important",
+          "link": "https://www.facebook.com/SkySports/posts/10160125530193762/",
+          "pubDate": "Thu, 07 Jul 2022 06:33:03 GMT",
+          "dc:creator": "Sky Sports",
+          "content": "<div><img src=\"https://scontent-dus1-1.xx.fbcdn.net/v/t15.13418-10/292333118_414308527302723_2328710394150149429_n.jpg?stp=dst-jpg&_nc_cat=109&ccb=1-7&_nc_sid=ad6a45&_nc_ohc=AKyfgV9at7UAX-Km8DJ&_nc_oc=AQlX0oF_Wtm_KhcKGh9dR-LM-tMnc1FzY0jdjm-t-JMn_ccZy-pHLikFX9mKMLXsp_4&_nc_ht=scontent-dus1-1.xx&edm=AJdBtusEAAAA&oh=00_AT9zlfetzh35MnPkO2fzDOh9Gx8GIwWwoLkcKZ80zTQqDA&oe=62CCD7E7\" style=\"width: 100%;\" /><div>🗣️ \"This start is so important\" \n\nEngland manager Sarina Wiegman says it was important for her side to start the Women's Euros with a win over Austria and praised her side for the amount of chances they created at Old Trafford 👇</div></div>",
+          "contentSnippet": "🗣️ \"This start is so important\" \n\nEngland manager Sarina Wiegman says it was important for her side to start the Women's Euros with a win over Austria and praised her side for the amount of chances they created at Old Trafford 👇",
+          "guid": "dbe80d190b6583b3c6a3dcce0c2cb8e6",
+          "isoDate": "2022-07-07T06:33:03.000Z"
+        }
+      }
+    ]
+  },
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

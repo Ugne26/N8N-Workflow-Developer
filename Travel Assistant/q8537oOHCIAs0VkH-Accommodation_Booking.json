@@ -1,0 +1,240 @@
+{
+  "name": "Accommodation Booking",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -976,
+        112
+      ],
+      "id": "2057800b-7b51-4cc2-804e-df9aec68c260",
+      "name": "When Called by Travel Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process booking request - expects hotel selection from user\nconst input = $input.first().json;\nlet query = '';\nlet sessionId = null;\nlet userId = null;\nlet selectedHotel = null;\nlet bookingDetails = null;\n\n// Handle multiple input formats\nif (input.query) {\n  query = input.query;\n} else if (input.chatInput) {\n  query = input.chatInput;\n} else if (input.input) {\n  query = input.input;\n} else if (input.text) {\n  query = input.text;\n} else if (input.message) {\n  query = input.message;\n} else if (typeof input === 'string') {\n  query = input;\n} else {\n  query = JSON.stringify(input);\n}\n\n// Extract metadata\nsessionId = input.sessionId || input.session_id || null;\nuserId = input.userId || input.user_id || null;\n\n// Check if this is a booking request with hotel data\nif (input.selectedHotel) {\n  selectedHotel = input.selectedHotel;\n}\n\nif (input.bookingDetails) {\n  bookingDetails = input.bookingDetails;\n}\n\nreturn {\n  originalQuery: query,\n  processedQuery: query.toLowerCase(),\n  sessionId: sessionId,\n  userId: userId,\n  selectedHotel: selectedHotel,\n  bookingDetails: bookingDetails,\n  timestamp: new Date().toISOString(),\n  isBookingRequest: selectedHotel !== null || query.toLowerCase().includes('book'),\n  hasQuery: query && query.trim().length > 0,\n  rawInput: input\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        112
+      ],
+      "id": "1634fe41-70f9-4860-b224-e6d9dcc2845a",
+      "name": "Process Booking Request1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Extract booking request details. The user wants to book a hotel. Return JSON:\n\n{\n  \"action\": \"book_hotel\",\n  \"hotel_choice\": \"hotel name or number from previous recommendations\",\n  \"guest_name\": \"guest name if provided\",\n  \"contact_email\": \"email if provided\",\n  \"contact_phone\": \"phone if provided\",\n  \"special_requests\": \"any special requests\",\n  \"booking_preference\": \"direct/booking.com/expedia/etc\"\n}\n\nUser request: {{ $json.originalQuery }}\n\nIf the user hasn't clearly indicated which hotel to book, set hotel_choice to \"needs_clarification\".\nIf contact details aren't provided, leave those fields empty."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -560,
+        112
+      ],
+      "id": "2e3300d6-5b99-43d9-a418-64610e989297",
+      "name": "Extract Booking Request1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.content.hotel_choice }}",
+              "rightValue": "needs_clarification",
+              "operator": {
+                "type": "string",
+                "operation": "notEqual"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -208,
+        112
+      ],
+      "id": "dc5af2af-5591-4ebc-970a-a00f54aaf446",
+      "name": "Hotel Choice Clear?1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate booking links and instructions for the selected hotel\nconst bookingData = $('Extract Booking Request1').first().json.message.content;\nconst processData = $('Process Booking Request1').first().json;\n\n// Create booking URLs for different platforms\nfunction createBookingUrls(hotelChoice, guestName, email, phone) {\n  const encodedHotel = encodeURIComponent(hotelChoice);\n  \n  return {\n    booking: `https://www.booking.com/searchresults.html?ss=${encodedHotel}`,\n    expedia: `https://www.expedia.com/Hotels-Search?destination=${encodedHotel}`,\n    hotels: `https://www.hotels.com/search.do?q-destination=${encodedHotel}`,\n    agoda: `https://www.agoda.com/search?city=${encodedHotel}`,\n    direct: `Search for \"${hotelChoice} official website\" on Google`\n  };\n}\n\nconst bookingUrls = createBookingUrls(\n  bookingData.hotel_choice,\n  bookingData.guest_name,\n  bookingData.contact_email,\n  bookingData.contact_phone\n);\n\n// Prepare booking checklist\nconst bookingChecklist = {\n  hotelSelected: bookingData.hotel_choice,\n  guestName: bookingData.guest_name || 'Not provided',\n  contactEmail: bookingData.contact_email || 'Not provided', \n  contactPhone: bookingData.contact_phone || 'Not provided',\n  specialRequests: bookingData.special_requests || 'None',\n  preferredPlatform: bookingData.booking_preference || 'Any platform'\n};\n\n// Determine next steps based on available information\nconst missingInfo = [];\nif (!bookingData.guest_name) missingInfo.push('Guest name');\nif (!bookingData.contact_email && !bookingData.contact_phone) missingInfo.push('Contact information');\n\nreturn {\n  bookingData: bookingData,\n  bookingUrls: bookingUrls,\n  bookingChecklist: bookingChecklist,\n  missingInfo: missingInfo,\n  readyToBook: missingInfo.length === 0,\n  success: true\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "bc4cd3fd-2fe4-46f6-ae3e-fe32095e9437",
+      "name": "Prepare Booking1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Create a comprehensive booking assistance response:\n\n**Booking Request Details:**\nSelected Hotel: {{ $json.bookingChecklist.hotelSelected }}\nGuest Name: {{ $json.bookingChecklist.guestName }}\nEmail: {{ $json.bookingChecklist.contactEmail }}\nPhone: {{ $json.bookingChecklist.contactPhone }}\nSpecial Requests: {{ $json.bookingChecklist.specialRequests }}\nPreferred Platform: {{ $json.bookingChecklist.preferredPlatform }}\n\n**Missing Information:** {{ $json.missingInfo.join(', ') || 'None' }}\n**Ready to Book:** {{ $json.readyToBook }}\n\n**Booking Platform URLs:**\n- Booking.com: {{ $json.bookingUrls.booking }}\n- Expedia: {{ $json.bookingUrls.expedia }}\n- Hotels.com: {{ $json.bookingUrls.hotels }}\n- Agoda: {{ $json.bookingUrls.agoda }}\n- Direct: {{ $json.bookingUrls.direct }}\n\nFormat your response as:\n\n## 🏨 Ready to Book: {{ $json.bookingChecklist.hotelSelected }}\n\n### 📋 Booking Summary:\n- **Guest:** {{ $json.bookingChecklist.guestName }}\n- **Contact:** {{ $json.bookingChecklist.contactEmail }}{{ $json.bookingChecklist.contactPhone ? ' | ' + $json.bookingChecklist.contactPhone : '' }}\n- **Special Requests:** {{ $json.bookingChecklist.specialRequests }}\n\n{% if not $json.readyToBook %}\n### ⚠️ Information Needed:\nBefore proceeding with the booking, I need:\n{% for item in $json.missingInfo %}\n- {{ item }}\n{% endfor %}\n\nPlease provide this information so I can help you complete the booking.\n{% endif %}\n\n### 🔗 Booking Options:\n\n**Choose your preferred platform:**\n\n1. **🏨 Booking.com** - Most popular, excellent cancellation policies\n   - Click here: [Book on Booking.com]({{ $json.bookingUrls.booking }})\n\n2. **✈️ Expedia** - Great for package deals and rewards\n   - Click here: [Book on Expedia]({{ $json.bookingUrls.expedia }})\n\n3. **🏩 Hotels.com** - Collect nights for free stays\n   - Click here: [Book on Hotels.com]({{ $json.bookingUrls.hotels }})\n\n4. **🌏 Agoda** - Competitive prices and member deals\n   - Click here: [Book on Agoda]({{ $json.bookingUrls.agoda }})\n\n5. **🏨 Direct Hotel Website** - Sometimes offers exclusive perks\n   - Search: {{ $json.bookingUrls.direct }}\n\n### 📝 Booking Steps:\n\n1. **Click your preferred booking link above**\n2. **Search for your specific hotel** ({{ $json.bookingChecklist.hotelSelected }})\n3. **Select your dates and room type**\n4. **Enter guest information:**\n   - Name: {{ $json.bookingChecklist.guestName }}\n   - Email: {{ $json.bookingChecklist.contactEmail }}\n   - Phone: {{ $json.bookingChecklist.contactPhone }}\n5. **Add special requests** in the comments section\n6. **Review booking details and pricing**\n7. **Complete payment**\n8. **Save confirmation email**\n\n### 💡 Pro Booking Tips:\n\n- **Compare Final Prices:** Include all taxes and fees\n- **Read Cancellation Policy:** Ensure flexibility if plans change\n- **Check Reviews:** Recent guest experiences matter\n- **Verify Location:** Confirm it's the right property\n- **Screenshot Confirmation:** Keep booking reference handy\n\n{% if $json.readyToBook %}\n**Everything looks ready! Click your preferred booking link above to secure your reservation.** 🎉\n{% else %}\n**Almost ready! Just provide the missing information above and I'll help you complete the booking.** 📞\n{% endif %}\n\nBe helpful and encouraging, making the booking process feel easy and secure!"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        208,
+        0
+      ],
+      "id": "089b04d8-5a81-47b0-9e9a-c879bc1df736",
+      "name": "Format Booking Assistance1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalQuery = $('Process Booking Request1').first().json.originalQuery;\n\nreturn {\n  error: false,\n  message: `I'd be happy to help you book a hotel! However, I need to know which hotel you'd like to book.`,\n  suggestion: `Please tell me:\n  \n1. Which hotel from the previous recommendations?\n2. Your name for the reservation\n3. Your email or phone number\n4. Any special requests\n\nFor example: \"I want to book Hotel Plaza Athénée, name is John Smith, email john@email.com\"\n\nOr run the Accommodation Finder first to see available hotels, then come back here to book your choice!`,\n  nextSteps: [\n    \"Specify which hotel to book\",\n    \"Provide guest name and contact info\",\n    \"I'll generate booking links for you\"\n  ]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        208
+      ],
+      "id": "aa253694-8426-4994-ae6b-7905df01e695",
+      "name": "Handle Unclear Choice1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "The user needs clarification about their hotel booking request:\n\n**User Request:** {{ $json.originalQuery }}\n**Issue:** {{ $json.message }}\n**Suggestion:** {{ $json.suggestion }}\n**Next Steps:** {{ $json.nextSteps.join(', ') }}\n\nFormat a helpful response that:\n1. Acknowledges their booking intent\n2. Explains what information is needed\n3. Provides clear examples\n4. Encourages them to provide the missing details\n\nBe friendly and make it easy for them to provide the right information."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        208,
+        208
+      ],
+      "id": "6ae9dab5-22a6-4398-8e38-aef9ea164fff",
+      "name": "Format Clarification Request1"
+    }
+  ],
+  "connections": {
+    "When Called by Travel Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Booking Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Booking Request1": {
+      "main": [
+        [
+          {
+            "node": "Extract Booking Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Booking Request1": {
+      "main": [
+        [
+          {
+            "node": "Hotel Choice Clear?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hotel Choice Clear?1": {
+      "main": [
+        [
+          {
+            "node": "Prepare Booking1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Unclear Choice1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Booking1": {
+      "main": [
+        [
+          {
+            "node": "Format Booking Assistance1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Unclear Choice1": {
+      "main": [
+        [
+          {
+            "node": "Format Clarification Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

@@ -1,0 +1,310 @@
+{
+  "name": "Meal Planner",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -832,
+        0
+      ],
+      "id": "ea9e2868-8219-4de0-8ae1-b9fb2b6b3e91",
+      "name": "When Called by Main Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst userMessage = input.chatInput || input.query || input.input || '';\n\nconst extractDetails = (message) => {\n  try {\n    const text = message.toLowerCase();\n    \n    const mealPatterns = [\n      /(\\d+)\\s*(meal|recipe|dish|course)/i,\n      /\\b(one|two|three|four|five|six|seven)\\s*(meal|recipe|dish)/i,\n      /(\\d+)\\s*different/i\n    ];\n    \n    let meals = 3;\n    const numberMap = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7 };\n    \n    for (const pattern of mealPatterns) {\n      const match = text.match(pattern);\n      if (match) {\n        const value = match[1].toLowerCase();\n        meals = numberMap[value] || parseInt(value) || 3;\n        break;\n      }\n    }\n    \n    const servingPatterns = [\n      /(\\d+)\\s*(people|person|serving|guest)/i,\n      /for\\s+(\\d+)/i,\n      /feeds?\\s+(\\d+)/i\n    ];\n    \n    let servings = 4;\n    for (const pattern of servingPatterns) {\n      const match = text.match(pattern);\n      if (match) {\n        servings = parseInt(match[1]) || 4;\n        break;\n      }\n    }\n    \n    const mealTypes = {\n      breakfast: /\\b(breakfast|morning|brunch|cereal|pancake|oatmeal)\\b/i,\n      lunch: /\\b(lunch|midday|sandwich|salad|wrap)\\b/i,\n      dinner: /\\b(dinner|evening|supper|main course)\\b/i,\n      snack: /\\b(snack|appetizer|finger food)\\b/i,\n      dessert: /\\b(dessert|sweet|cake|cookie|pie)\\b/i\n    };\n    \n    let mealType = 'dinner';\n    for (const [type, pattern] of Object.entries(mealTypes)) {\n      if (pattern.test(text)) {\n        mealType = type;\n        break;\n      }\n    }\n    \n    const dietaryOptions = {\n      vegetarian: /\\b(vegetarian|veggie)\\b/i,\n      vegan: /\\b(vegan|plant.?based)\\b/i,\n      'gluten-free': /\\b(gluten.?free|gf|celiac)\\b/i,\n      'dairy-free': /\\b(dairy.?free|lactose.?free|no dairy)\\b/i,\n      healthy: /\\b(healthy|nutritious|clean|wholesome)\\b/i,\n      'low-carb': /\\b(low.?carb|keto|atkins)\\b/i,\n      'high-protein': /\\b(protein|muscle|fitness|workout)\\b/i,\n      quick: /\\b(quick|fast|easy|simple|30.?min|rapid)\\b/i,\n      'budget-friendly': /\\b(budget|cheap|affordable|save money|low.?cost)\\b/i,\n      comfort: /\\b(comfort|cozy|hearty|soul food)\\b/i,\n      fresh: /\\b(fresh|seasonal|local|organic)\\b/i,\n      spicy: /\\b(spicy|hot|kick|heat)\\b/i\n    };\n    \n    const dietary = [];\n    for (const [pref, pattern] of Object.entries(dietaryOptions)) {\n      if (pattern.test(text)) dietary.push(pref);\n    }\n    \n    const cuisineTypes = {\n      italian: /\\b(italian|pasta|pizza|mediterranean)\\b/i,\n      mexican: /\\b(mexican|taco|burrito|tex.?mex|salsa)\\b/i,\n      asian: /\\b(asian|chinese|japanese|thai|korean|stir.?fry)\\b/i,\n      indian: /\\b(indian|curry|tikka|masala|spice)\\b/i,\n      american: /\\b(american|bbq|burger|southern)\\b/i,\n      french: /\\b(french|classic|elegant)\\b/i,\n      greek: /\\b(greek|tzatziki|feta|olive)\\b/i,\n      spanish: /\\b(spanish|paella|tapas)\\b/i\n    };\n    \n    const cuisines = [];\n    for (const [cuisine, pattern] of Object.entries(cuisineTypes)) {\n      if (pattern.test(text)) cuisines.push(cuisine);\n    }\n    \n    const timeConstraints = {\n      'under-15-min': /\\b(15.?min|quarter.?hour|very.?quick)\\b/i,\n      'under-30-min': /\\b(30.?min|half.?hour|quick)\\b/i,\n      'under-1-hour': /\\b(1.?hour|hour)\\b/i,\n      'slow-cook': /\\b(slow.?cook|all.?day|crockpot|instant.?pot)\\b/i,\n      'meal-prep': /\\b(meal.?prep|batch.?cook|make.?ahead|weekly.?prep)\\b/i\n    };\n    \n    const timePrefs = [];\n    for (const [time, pattern] of Object.entries(timeConstraints)) {\n      if (pattern.test(text)) timePrefs.push(time);\n    }\n    \n    const equipment = {\n      'slow-cooker': /\\b(slow.?cooker|crockpot|crock.?pot)\\b/i,\n      'instant-pot': /\\b(instant.?pot|pressure.?cooker)\\b/i,\n      'air-fryer': /\\b(air.?fryer|air.?fry)\\b/i,\n      oven: /\\b(oven|bake|roast)\\b/i,\n      grill: /\\b(grill|bbq|barbecue)\\b/i,\n      stovetop: /\\b(stovetop|pan|skillet)\\b/i\n    };\n    \n    const preferredEquipment = [];\n    for (const [equip, pattern] of Object.entries(equipment)) {\n      if (pattern.test(text)) preferredEquipment.push(equip);\n    }\n    \n    // Extract common ingredients like in recipe search\n    const commonIngredients = {\n      proteins: ['chicken', 'beef', 'pork', 'fish', 'salmon', 'turkey', 'tofu', 'eggs', 'shrimp', 'lamb'],\n      vegetables: ['broccoli', 'spinach', 'mushrooms', 'tomatoes', 'onions', 'peppers', 'carrots', 'zucchini', 'eggplant'],\n      grains: ['rice', 'pasta', 'quinoa', 'bread', 'noodles', 'barley', 'couscous'],\n      dairy: ['cheese', 'milk', 'yogurt', 'cream', 'butter'],\n      herbs: ['basil', 'oregano', 'thyme', 'rosemary', 'cilantro', 'parsley']\n    };\n    \n    const ingredients = [];\n    for (const [category, items] of Object.entries(commonIngredients)) {\n      for (const item of items) {\n        if (text.includes(item)) ingredients.push(item);\n      }\n    }\n    \n    return {\n      meals: Math.min(Math.max(meals, 1), 7),\n      servings: Math.min(Math.max(servings, 1), 12),\n      mealType,\n      dietary,\n      cuisines,\n      timePrefs,\n      preferredEquipment,\n      ingredients,\n      originalMessage: message,\n      error: null\n    };\n  } catch (error) {\n    return {\n      meals: 3,\n      servings: 4,\n      mealType: 'dinner',\n      dietary: [],\n      cuisines: [],\n      timePrefs: [],\n      preferredEquipment: [],\n      ingredients: [],\n      originalMessage: message,\n      error: error.message\n    };\n  }\n};\n\nconst calculateComplexity = (details, message) => {\n  let score = 0;\n  \n  if (message.length > 100) score += 2;\n  else if (message.length > 50) score += 1;\n  \n  score += details.dietary.length;\n  score += details.cuisines.length;\n  score += details.timePrefs.length;\n  score += details.ingredients.length;\n  \n  if (details.meals > 3) score += 1;\n  if (details.servings > 6) score += 1;\n  \n  return score >= 4 ? 'detailed' : score >= 2 ? 'moderate' : 'simple';\n};\n\nconst details = extractDetails(userMessage);\nconst complexity = calculateComplexity(details, userMessage);\n\nreturn {\n  mealCount: details.meals,\n  servings: details.servings,\n  mealType: details.mealType,\n  dietaryPreferences: details.dietary,\n  cuisineTypes: details.cuisines,\n  timeConstraints: details.timePrefs,\n  preferredEquipment: details.preferredEquipment,\n  ingredients: details.ingredients,\n  originalMessage: details.originalMessage,\n  sessionId: input.sessionId,\n  timestamp: new Date().toISOString(),\n  complexity: complexity,\n  error: details.error\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -624,
+        0
+      ],
+      "id": "732a2bac-c75e-4169-878f-a2e04d7b0da0",
+      "name": "Enhanced Detail Extraction"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-complex",
+              "leftValue": "={{ $json.complexity }}",
+              "rightValue": "detailed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        144
+      ],
+      "id": "9d149fd0-14c9-46b9-846e-285116d3fcf6",
+      "name": "Is Complex Request?"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a friendly meal planning assistant. The user asked: \"{{ $json.originalMessage }}\"\n\nCreate {{ $json.mealCount }} {{ $json.mealType }} meal ideas for {{ $json.servings }} people with these preferences:\n- Ingredients: {{ $json.ingredients.join(', ') || 'Chef\\'s choice' }}\n- Dietary: {{ $json.dietaryPreferences.join(', ') || 'No restrictions' }}\n- Cuisine: {{ $json.cuisineTypes.join(', ') || 'Any cuisine' }}\n- Time: {{ $json.timeConstraints.join(', ') || 'Flexible timing' }}\n\nFor each meal, provide:\n- **Meal name** and 1-sentence description\n- **Time & Difficulty:** Prep + cook time, difficulty level\n- **Key ingredients:** 6-8 main items with quantities\n- **Quick steps:** 4-5 simple bullet points\n- **Pro tip:** One practical cooking tip\n\n**Shopping Summary:**\n- Quick list organized by: Produce | Meat | Pantry | Dairy\n- 2-3 money-saving tips\n\nKeep it concise and scannable. Use a warm, encouraging tone but avoid lengthy explanations."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        64,
+        0
+      ],
+      "id": "5fb6b14d-1a67-4be9-87dd-6772375e6b4a",
+      "name": "Advanced Meal Generator"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a friendly meal planning assistant. The user asked: \"{{ $json.originalMessage }}\"\n\nCreate {{ $json.mealCount }} quick {{ $json.mealType }} ideas for {{ $json.servings }} people.\nIngredients: {{ $json.ingredients.join(', ') || 'Flexible' }}\nDietary: {{ $json.dietaryPreferences.join(', ') || 'None specified' }}\n\nFor each meal:\n- **Name & description** (1 sentence)\n- **Time:** Prep + cook, difficulty\n- **Ingredients:** 5-6 key items with amounts\n- **Steps:** 3-4 simple instructions\n- **Tip:** Quick cooking tip\n\n**Shopping List:** Organized by store sections\n**Quick Tips:** 2-3 meal prep or money-saving suggestions\n\nWrite conversationally but keep it concise and easy to scan."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        64,
+        208
+      ],
+      "id": "e1fbe84a-08d7-4c9d-9755-fa805c915360",
+      "name": "Standard Meal Generator"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -432,
+        0
+      ],
+      "id": "b0ca49a1-fe76-4cf9-8ef2-231c05906b92",
+      "name": "Check for Errors1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const details = $input.first().json;\n\nreturn {\n  output: `I apologize, but I encountered an issue processing your meal planning request. Let me help you with a simple meal suggestion instead.\\n\\nHow about I suggest ${details.mealCount} delicious ${details.mealType} recipes for ${details.servings} people? Just let me know any specific preferences you have!`,\n  success: false,\n  error: details.error,\n  data: details,\n  timestamp: new Date().toISOString(),\n  source: 'meal_planning_error_handler'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        96,
+        -224
+      ],
+      "id": "dc748d09-ca61-4dab-ab39-fb0ce6961ec8",
+      "name": "Error Handler1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json;\nconst mealDetails = $('Enhanced Detail Extraction').first().json;\n\n// Fix: Get the response from the correct field (same as recipe search)\nlet response = aiResponse.output || \n               aiResponse.text || \n               aiResponse.content ||\n               aiResponse.message ||\n               (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message && aiResponse.choices[0].message.content) ||\n               (typeof aiResponse === 'string' ? aiResponse : null);\n\n// Debug: Log what we're getting from the AI\nconsole.log('AI Response Keys:', Object.keys(aiResponse));\nconsole.log('AI Response Type:', typeof aiResponse);\nconsole.log('AI Response:', JSON.stringify(aiResponse).substring(0, 200) + '...');\n\n// If we still don't have a response, provide a fallback\nif (!response) {\n  response = `I would be happy to help you plan some meals! Based on your request, I can suggest ${mealDetails.mealCount} ${mealDetails.mealType} recipes for ${mealDetails.servings} people. Could you tell me a bit more about what you are in the mood for?`;\n  console.warn('No AI response found, using fallback');\n} else {\n  console.log('Found AI response, length:', response.length);\n}\n\n// Add context only if we have the actual AI response\nconst contextItems = [];\nif (response.length > 100 && mealDetails.ingredients.length > 0) {\n  contextItems.push(`featuring ${mealDetails.ingredients.join(', ')}`);\n}\nif (response.length > 100 && mealDetails.dietaryPreferences.length > 0) {\n  contextItems.push(`perfectly suited for ${mealDetails.dietaryPreferences.join(' and ')} needs`);\n}\nif (response.length > 100 && mealDetails.cuisineTypes.length > 0) {\n  contextItems.push(`focusing on ${mealDetails.cuisineTypes.join(' and ')} flavors`);\n}\nif (response.length > 100 && mealDetails.timeConstraints.length > 0) {\n  contextItems.push(`designed for ${mealDetails.timeConstraints.join(' and ')} cooking`);\n}\n\nif (contextItems.length > 0 && response.length > 100) {\n  response += `\\n\\n✨ These meal plans are ${contextItems.join(', ')} - I hope they work perfectly for you!`;\n}\n\nreturn {\n  output: response,\n  success: true,\n  data: {\n    mealCount: mealDetails.mealCount,\n    servings: mealDetails.servings,\n    mealType: mealDetails.mealType,\n    ingredients: mealDetails.ingredients,\n    dietaryPreferences: mealDetails.dietaryPreferences,\n    cuisineTypes: mealDetails.cuisineTypes,\n    timeConstraints: mealDetails.timeConstraints,\n    preferredEquipment: mealDetails.preferredEquipment,\n    complexity: mealDetails.complexity\n  },\n  timestamp: new Date().toISOString(),\n  source: 'enhanced_meal_planning_assistant',\n  debug: {\n    aiResponseKeys: Object.keys(aiResponse),\n    responseLength: response ? response.length : 0,\n    foundResponse: !!response\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        576,
+        0
+      ],
+      "id": "5486375e-5908-41af-b2a8-342c0b226f1a",
+      "name": "Natural Response Formatter1"
+    }
+  ],
+  "connections": {
+    "When Called by Main Agent": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Detail Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Detail Extraction": {
+      "main": [
+        [
+          {
+            "node": "Check for Errors1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Complex Request?": {
+      "main": [
+        [
+          {
+            "node": "Advanced Meal Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Standard Meal Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advanced Meal Generator": {
+      "main": [
+        [
+          {
+            "node": "Natural Response Formatter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standard Meal Generator": {
+      "main": [
+        [
+          {
+            "node": "Natural Response Formatter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Errors1": {
+      "main": [
+        [
+          {
+            "node": "Error Handler1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Complex Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler1": {
+      "main": [
+        [
+          {
+            "node": "Natural Response Formatter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {
+    "Enhanced Detail Extraction": [
+      {
+        "json": {
+          "mealCount": 5,
+          "servings": 6,
+          "mealType": "dinner",
+          "dietaryPreferences": [
+            "healthy",
+            "vegetarian",
+            "quick",
+            "budget-friendly"
+          ],
+          "cuisineTypes": [
+            "italian"
+          ],
+          "timeConstraints": [
+            "under-30-min",
+            "meal-prep"
+          ],
+          "preferredEquipment": [
+            "stovetop"
+          ],
+          "ingredients": [
+            "chicken",
+            "mushrooms"
+          ],
+          "originalMessage": "I need 5 healthy vegetarian Italian dinner meal plans for 6 people with chicken and mushrooms that can be made in under 30 minutes using stovetop cooking. I'm on a budget and want something quick for meal prep.",
+          "sessionId": "test-session-002",
+          "timestamp": "2025-06-02T16:45:32.789Z",
+          "complexity": "detailed",
+          "error": null
+        }
+      }
+    ]
+  },
+  "triggerCount": 0,
+  "meta": null
+}

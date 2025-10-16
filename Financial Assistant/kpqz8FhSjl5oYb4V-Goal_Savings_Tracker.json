@@ -1,0 +1,755 @@
+{
+  "name": "Goal Savings Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "goals-add",
+        "options": {}
+      },
+      "id": "035ff6bb-f722-48e1-959b-7ecc4ab5c8c6",
+      "name": "Webhook — Add Goal1",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1792,
+        544
+      ],
+      "webhookId": "e354e5b3-da86-4c48-948b-e51b3a9c1f4d"
+    },
+    {
+      "parameters": {
+        "jsCode": "const b=$json.body||$json||{};return {goal_name:(b.goal_name||'').trim(),target_amount:b.target_amount!=null?+b.target_amount:null,currency:(b.currency||'EUR').toUpperCase(),start_date:b.start_date||new Date().toISOString().slice(0,10),deadline:b.deadline||'',notes:(b.notes||'').trim()};"
+      },
+      "id": "e93a0482-8eb8-4ffa-846b-405261082746",
+      "name": "Normalize Input1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1568,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ !!$json.goal_name }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            },
+            {
+              "leftValue": "={{ typeof $json.target_amount==='number' && isFinite($json.target_amount) && $json.target_amount>0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            },
+            {
+              "leftValue": "={{ /^\\d{4}-\\d{2}-\\d{2}$/.test($json.deadline||'') }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "isTrue"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b4e18d1d-23d4-4b13-871e-42faa8ed6dee",
+      "name": "Validate Required1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1376,
+        544
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "c17a7292-8846-4000-9262-489ccb1d5c39",
+      "name": "Respond ",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -1152,
+        704
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const g=$json;const id=(g.goal_name+'-'+g.deadline).toUpperCase().replace(/[^A-Z0-9-]/g,'');return {id,goal_name:g.goal_name,target_amount:g.target_amount,currency:g.currency,start_date:g.start_date,deadline:g.deadline,saved_so_far:0,progress_percent:0,status:'active',notes:g.notes||'',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};"
+      },
+      "id": "891ee235-4b71-4f40-ac96-d3d3d012a3b2",
+      "name": "Create Row1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1152,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 715189685,
+          "mode": "list",
+          "cachedResultName": "Goal Savings"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{$json.id}}",
+            "goal_name": "={{$json.goal_name}}",
+            "target_amount": "={{$json.target_amount}}",
+            "currency": "={{$json.currency}}",
+            "start_date": "={{$json.start_date}}",
+            "deadline": "={{$json.deadline}}",
+            "saved_so_far": "={{$json.saved_so_far}}",
+            "progress_percent": "={{$json.progress_percent}}",
+            "status": "={{$json.status}}",
+            "notes": "={{$json.notes}}",
+            "created_at": "={{$json.created_at}}",
+            "updated_at": "={{$json.updated_at}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goal_name",
+              "displayName": "goal_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "target_amount",
+              "displayName": "target_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "saved_so_far",
+              "displayName": "saved_so_far",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress_percent",
+              "displayName": "progress_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "233bb5f1-423c-41d7-86d9-8bc5534f11b2",
+      "name": "Sheets → Append Goal1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -928,
+        384
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "7883e09f-5e98-4b78-b343-dd69ad81c7a8",
+      "name": "Respond 201",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        -720,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "id": "66190821-36e2-441d-89b4-6f4d59fc153c",
+      "name": "Schedule — Daily 07:",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1360,
+        1168
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 715189685,
+          "mode": "list",
+          "cachedResultName": "Goal Savings"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "dc2abfbf-d915-4c21-b04f-d8bcedf4a1ad",
+      "name": "Load Active Goals1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1136,
+        1056
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions"
+        },
+        "options": {}
+      },
+      "id": "2434318e-c6fc-4b37-853b-1c8ea326068a",
+      "name": "Load Transactions1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1136,
+        1280
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const goals=$('Load Active Goals1').all().map(i=>i.json);const tx=$('Load Transactions1').all().map(i=>i.json);function norm(s){return (s||'').toString().toUpperCase();}const out=[];for(const g of goals){const start=new Date(g.start_date||'1970-01-01');const sum=tx.filter(t=>{const d=new Date(t.date||t.transaction_date||t.booked_at||'1970-01-01');if(isNaN(d)||d<start)return false;const amt=parseFloat(t.amount);if(!isFinite(amt))return false;const isSavings=(t.type||'').toLowerCase()==='savings'||(norm(t.category).includes('SAV'));const tagged=norm(t.purpose||t.name||'').includes(norm(g.goal_name))||norm(t.notes||'').includes(norm(g.id||''));return isSavings||tagged;}).reduce((a,t)=>a+Math.max(0,parseFloat(t.amount)),0);const target=parseFloat(g.target_amount)||0;const percent=target>0?Math.min(100,Math.round((sum/target)*100)):0;let status=g.status||'active';const today=new Date();const deadline=new Date(g.deadline);if(sum>=target)status='achieved';else if(today>deadline)status='overdue';out.push({json:{id:g.id,saved_so_far:+sum.toFixed(2),progress_percent:percent,status,updated_at:new Date().toISOString()}});}return out;"
+      },
+      "id": "cac9ee5c-e553-4ca3-9657-db4585b9a175",
+      "name": "Compute Progress1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 715189685,
+          "mode": "list",
+          "cachedResultName": "Goal Savings"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{$json.id}}",
+            "saved_so_far": "={{$json.saved_so_far}}",
+            "progress_percent": "={{$json.progress_percent}}",
+            "status": "={{$json.status}}",
+            "updated_at": "={{$json.updated_at}}",
+            "row_number": 0
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goal_name",
+              "displayName": "goal_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "target_amount",
+              "displayName": "target_amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "start_date",
+              "displayName": "start_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "deadline",
+              "displayName": "deadline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "saved_so_far",
+              "displayName": "saved_so_far",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "progress_percent",
+              "displayName": "progress_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "updated_at",
+              "displayName": "updated_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "d6573685-173a-4f94-80a8-62d593f659a5",
+      "name": "Update Goals1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -672,
+        1152
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "active",
+              "operator": {
+                "type": "string",
+                "operation": "equal"
+              }
+            },
+            {
+              "leftValue": "={{ $json.progress_percent }}",
+              "rightValue": 75,
+              "operator": {
+                "type": "number",
+                "operation": "smaller"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "07ffa202-824e-49d7-a43b-29af5dc008a7",
+      "name": "IF Behind Schedule1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        1152
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "balnaityteugne@gmail.com",
+        "toEmail": "balnaityteugne@gmail.com",
+        "subject": "Goal check-in",
+        "text": "Progress update: {{$json.progress_percent}}% complete. Keep going! If you want, reply with a date to schedule transfers.",
+        "options": {}
+      },
+      "id": "335f2e73-1577-4a80-8589-f7f40fd24c32",
+      "name": "Email Nudge (optional)1",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        1056
+      ],
+      "webhookId": "198d5fde-de45-46aa-912c-6f608bc7b870",
+      "credentials": {
+        "smtp": {
+          "id": "W3sc81JtnvhO4I8B",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook — Add Goal1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input1": {
+      "main": [
+        [
+          {
+            "node": "Validate Required1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Required1": {
+      "main": [
+        [
+          {
+            "node": "Create Row1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Row1": {
+      "main": [
+        [
+          {
+            "node": "Sheets → Append Goal1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sheets → Append Goal1": {
+      "main": [
+        [
+          {
+            "node": "Respond 201",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule — Daily 07:": {
+      "main": [
+        [
+          {
+            "node": "Load Active Goals1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Load Transactions1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Active Goals1": {
+      "main": [
+        [
+          {
+            "node": "Compute Progress1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Transactions1": {
+      "main": [
+        [
+          {
+            "node": "Compute Progress1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Progress1": {
+      "main": [
+        [
+          {
+            "node": "Update Goals1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Goals1": {
+      "main": [
+        [
+          {
+            "node": "IF Behind Schedule1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Behind Schedule1": {
+      "main": [
+        [
+          {
+            "node": "Email Nudge (optional)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "name": "Style/Design Visual Match Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -288,
+        320
+      ],
+      "id": "03a68967-ef38-46ed-bf26-b2afdcd5864d",
+      "name": "When Called by Main Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// SIMPLE: Just pass the entire GPT content to main agent\nconsole.log('=== SIMPLE CONTENT PASSTHROUGH ===');\n\ntry {\n  const gptResponse = $('Fixed GPT-4o Processor').first().json;\n  \n  // Get the raw content using the correct path\n  let content = null;\n  if (gptResponse.choices && gptResponse.choices[0] && gptResponse.choices[0].message && gptResponse.choices[0].message.content) {\n    content = gptResponse.choices[0].message.content;\n    console.log('✅ Found content in choices[0].message.content');\n  } else if (gptResponse.message?.content) {\n    content = gptResponse.message.content;\n    console.log('✅ Found content in message.content (fallback)');\n  } else if (gptResponse.text) {\n    content = gptResponse.text;\n    console.log('✅ Found content in text field (fallback)');\n  } else {\n    console.error('❌ No content found');\n    console.log('📊 Available structure:', Object.keys(gptResponse));\n    content = 'No GPT response found';\n  }\n  \n  console.log('📝 Content length:', content?.length || 0);\n  console.log('📝 Content preview:', content?.substring(0, 200) || 'No content');\n  \n  // Just return the raw content - main agent will handle everything else\n  return {\n    output: content,\n    success: true,\n    timestamp: new Date().toISOString(),\n    toolUsed: 'visual_search',\n    responseSource: 'gpt_raw_content'\n  };\n  \n} catch (error) {\n  console.error('❌ Error:', error.message);\n  return {\n    output: 'Error accessing GPT response',\n    success: false,\n    timestamp: new Date().toISOString(),\n    toolUsed: 'visual_search',\n    responseSource: 'error'\n  };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        320
+      ],
+      "id": "fe4d0160-d4ef-4bfd-b0c3-f26f6b419b96",
+      "name": "Final Response Processor"
+    },
+    {
+      "parameters": {
+        "jsCode": "// FINAL: Universal Visual Search Input Processor with Complete Intelligence\nconst input = $input.first().json;\nconst sessionId = input.sessionId || `session_${Date.now()}`;\n\nconsole.log('=== UNIVERSAL VISUAL SEARCH SYSTEM v1.0 ===');\nconsole.log('📝 User Message:', input.chatInput?.substring(0, 100));\nconsole.log('📁 Files Count:', input.files?.length || 0);\nconsole.log('📍 User Location:', input.userLocation || 'Unknown');\n\n// === LOCATION & REGION DETECTION ===\nfunction detectUserRegion(location, timezone, language, ip) {\n  const locationStr = (location || '').toLowerCase();\n  const timezoneStr = (timezone || '').toLowerCase();\n  const langStr = (language || '').toLowerCase();\n  \n  // Direct location matches\n  if (locationStr.includes('united states') || locationStr.includes('usa') || locationStr.includes('us')) return 'United States';\n  if (locationStr.includes('united kingdom') || locationStr.includes('uk') || locationStr.includes('england')) return 'United Kingdom';\n  if (locationStr.includes('canada')) return 'Canada';\n  if (locationStr.includes('australia')) return 'Australia';\n  if (locationStr.includes('germany') || locationStr.includes('deutschland')) return 'Germany';\n  if (locationStr.includes('france')) return 'France';\n  if (locationStr.includes('italy')) return 'Italy';\n  if (locationStr.includes('spain')) return 'Spain';\n  if (locationStr.includes('netherlands')) return 'Netherlands';\n  if (locationStr.includes('japan')) return 'Japan';\n  if (locationStr.includes('south korea')) return 'South Korea';\n  if (locationStr.includes('singapore')) return 'Singapore';\n  if (locationStr.includes('india')) return 'India';\n  \n  // Timezone-based detection\n  if (timezoneStr.includes('america/new_york') || timezoneStr.includes('america/chicago') || timezoneStr.includes('america/denver') || timezoneStr.includes('america/los_angeles')) return 'United States';\n  if (timezoneStr.includes('europe/london')) return 'United Kingdom';\n  if (timezoneStr.includes('america/toronto') || timezoneStr.includes('america/vancouver')) return 'Canada';\n  if (timezoneStr.includes('australia/sydney') || timezoneStr.includes('australia/melbourne')) return 'Australia';\n  if (timezoneStr.includes('europe/berlin')) return 'Germany';\n  if (timezoneStr.includes('europe/paris')) return 'France';\n  if (timezoneStr.includes('asia/tokyo')) return 'Japan';\n  \n  // Language-based fallback\n  if (langStr === 'en-us') return 'United States';\n  if (langStr === 'en-gb') return 'United Kingdom';\n  if (langStr === 'en-ca') return 'Canada';\n  if (langStr === 'en-au') return 'Australia';\n  if (langStr === 'de') return 'Germany';\n  if (langStr === 'fr') return 'France';\n  \n  return 'Global';\n}\n\nconst detectedRegion = detectUserRegion(\n  input.userLocation || input.location,\n  input.timezone,\n  input.language,\n  input.userIP\n);\n\n// === RETAILER PREFERENCE DETECTION ===\nconst userMessage = (input.chatInput || '').toLowerCase();\n\nconst retailerPatterns = {\n  'amazon': ['amazon', 'amazon.com', 'amazon.co.uk', 'amazon.de', 'amazon.ca'],\n  'ebay': ['ebay', 'ebay.com'],\n  'aliexpress': ['aliexpress', 'ali express'],\n  'walmart': ['walmart', 'walmart.com'],\n  'target': ['target', 'target.com'],\n  'bestbuy': ['best buy', 'bestbuy'],\n  'apple': ['apple', 'apple.com', 'apple store'],\n  'nike': ['nike', 'nike.com'],\n  'adidas': ['adidas', 'adidas.com'],\n  'asos': ['asos', 'asos.com'],\n  'zara': ['zara', 'zara.com'],\n  'ikea': ['ikea', 'ikea.com'],\n  'sephora': ['sephora', 'sephora.com'],\n  'johnlewis': ['john lewis', 'johnlewis'],\n  'currys': ['currys', 'currys.co.uk'],\n  'mediamarkt': ['mediamarkt', 'media markt'],\n  'zalando': ['zalando', 'zalando.com'],\n  'aboutyou': ['aboutyou', 'about you']\n};\n\n// Detect user-specified retailers\nconst userSpecifiedRetailers = [];\nObject.entries(retailerPatterns).forEach(([retailerKey, patterns]) => {\n  patterns.forEach(pattern => {\n    if (userMessage.includes(pattern)) {\n      if (!userSpecifiedRetailers.includes(retailerKey)) {\n        userSpecifiedRetailers.push(retailerKey);\n      }\n    }\n  });\n});\n\n// Detect excluded retailers\nconst excludedRetailers = [];\nconst exclusionMatch = userMessage.match(/(?:not from|don't want|avoid|except|but not)\\s+([a-z]+)/i);\nif (exclusionMatch) {\n  const excluded = exclusionMatch[1].toLowerCase();\n  if (Object.keys(retailerPatterns).includes(excluded)) {\n    excludedRetailers.push(excluded);\n  }\n}\n\n// === GLOBAL RETAILER INTELLIGENCE ===\nconst globalRetailerTiers = {\n  tier1_worldwide: {\n    retailers: ['amazon', 'ebay', 'aliexpress'],\n    description: 'Ships to 100+ countries',\n    reliability: 'high'\n  },\n  tier2_major_global: {\n    retailers: ['apple', 'nike', 'adidas', 'asos', 'zara'],\n    description: 'Major global brands',\n    reliability: 'high'\n  },\n  tier3_regional: {\n    retailers: ['zalando', 'sephora', 'ikea'],\n    description: 'Regional with some international shipping',\n    reliability: 'medium'\n  }\n};\n\n// === SMART RETAILER SELECTION ===\nfunction selectOptimalRetailers(userRetailers, region, excluded) {\n  let recommended = [];\n  let strategy = 'global_fallback';\n  \n  if (userRetailers.length > 0) {\n    strategy = 'user_specified';\n    recommended = userRetailers.filter(r => !excluded.includes(r));\n  } else if (region && region !== 'Global') {\n    strategy = 'region_optimized';\n    const regionMap = {\n      'United States': ['amazon', 'target', 'walmart', 'bestbuy'],\n      'United Kingdom': ['amazon', 'johnlewis', 'currys', 'asos'],\n      'Germany': ['amazon', 'mediamarkt', 'zalando'],\n      'Canada': ['amazon', 'bestbuy'],\n      'Australia': ['amazon', 'jbhifi']\n    };\n    const localRetailers = regionMap[region] || [];\n    recommended = [...localRetailers, ...globalRetailerTiers.tier1_worldwide.retailers]\n      .filter((r, i, arr) => arr.indexOf(r) === i)\n      .filter(r => !excluded.includes(r))\n      .slice(0, 5);\n  } else {\n    strategy = 'global_fallback';\n    recommended = [...globalRetailerTiers.tier1_worldwide.retailers, ...globalRetailerTiers.tier2_major_global.retailers.slice(0, 2)]\n      .filter(r => !excluded.includes(r))\n      .slice(0, 4);\n  }\n  \n  return {\n    retailers: recommended,\n    strategy: strategy,\n    needsUserInput: recommended.length < 2\n  };\n}\n\nconst retailerSelection = selectOptimalRetailers(userSpecifiedRetailers, detectedRegion, excludedRetailers);\n\n// === IMAGE PROCESSING ===\nlet processedFiles = [];\nif (input.files && input.files.length > 0) {\n  processedFiles = input.files.map((file, index) => {\n    console.log(`📄 Processing file ${index + 1}:`, {\n      fileName: file.fileName,\n      mimeType: file.mimeType,\n      hasData: !!file.data\n    });\n    \n    return {\n      fileName: file.fileName || `image_${index + 1}`,\n      mimeType: file.mimeType || 'image/jpeg',\n      data: file.data,\n      isImage: (file.mimeType || '').startsWith('image/')\n    };\n  }).filter(file => file.isImage);\n  \n  console.log(`✅ Processed ${processedFiles.length} image files`);\n}\n\n// === USER INTENT ANALYSIS ===\nconst intentAnalysis = {\n  wantsColorChange: /different color|other color|another color|red|blue|green|pink|black|white/i.test(userMessage),\n  wantsSizeChange: /different size|larger|smaller|bigger|size/i.test(userMessage),\n  wantsAlternatives: /similar|alternative|like this|same style/i.test(userMessage),\n  wantsSameProduct: /find this|where to buy|purchase|get this/i.test(userMessage),\n  hasUrgency: /need|urgent|asap|quickly|soon/i.test(userMessage),\n  hasBudget: /cheap|expensive|budget|price|cost/i.test(userMessage)\n};\n\n// === FINAL METADATA ASSEMBLY ===\nconst enhancedMetadata = {\n  ...input,\n  sessionId: sessionId,\n  timestamp: new Date().toISOString(),\n  \n  // Image data\n  processedFiles: processedFiles,\n  hasImages: processedFiles.length > 0,\n  \n  // Location intelligence\n  detectedRegion: detectedRegion,\n  userLocation: input.userLocation || input.location,\n  userTimezone: input.timezone,\n  userLanguage: input.language,\n  \n  // Retailer intelligence\n  userSpecifiedRetailers: userSpecifiedRetailers,\n  excludedRetailers: excludedRetailers,\n  recommendedRetailers: retailerSelection.retailers,\n  retailerStrategy: retailerSelection.strategy,\n  needsUserInput: retailerSelection.needsUserInput,\n  \n  // User intent\n  intentAnalysis: intentAnalysis,\n  \n  // System intelligence\n  globalTiers: globalRetailerTiers,\n  \n  // Smart hints for GPT\n  smartHints: {\n    hasSpecificRetailers: userSpecifiedRetailers.length > 0,\n    hasLocation: detectedRegion !== 'Global',\n    retailerCount: retailerSelection.retailers.length,\n    needsMoreInfo: retailerSelection.needsUserInput,\n    primaryIntent: Object.keys(intentAnalysis).find(key => intentAnalysis[key]) || 'general_search',\n    globalAccessible: retailerSelection.retailers.some(r => globalRetailerTiers.tier1_worldwide.retailers.includes(r))\n  }\n};\n\nconsole.log('🎯 Final metadata summary:', {\n  region: detectedRegion,\n  hasImages: enhancedMetadata.hasImages,\n  retailerStrategy: retailerSelection.strategy,\n  retailerCount: retailerSelection.retailers.length,\n  needsInput: retailerSelection.needsUserInput\n});\n\nreturn enhancedMetadata;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        320
+      ],
+      "id": "a7c6da82-73b1-4af6-8ba1-da2754fdc0c7",
+      "name": "Enhanced Input Processor1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are an expert universal product identification assistant with global retailer intelligence. Analyze uploaded images and provide concise shopping recommendations based on user location, retailer preferences, and smart fallback logic.\n\n**CONTEXT:**\n- **User Location**: {{ $json.detectedRegion || 'Unknown' }}\n- **Retailer Strategy**: {{ $json.retailerStrategy || 'global_fallback' }}\n- **Recommended Retailers**: {{ $json.recommendedRetailers.join(', ') || 'Global options' }}\n- **User Intent**: {{ $json.smartHints.primaryIntent || 'general_search' }}\n\n**CRITICAL: Always respond with valid JSON in this exact format:**\n\n{\n  \"output\": \"Your concise markdown response with region-appropriate retailers\",\n  \"success\": true,\n  \"sessionId\": \"{{ $json.sessionId }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\",\n  \"toolUsed\": \"visual_search\",\n  \"responseSource\": \"ai_analysis\",\n  \"metadata\": {\n    \"hasImage\": {{ $json.hasImages }},\n    \"imageProcessed\": {{ $json.hasImages }},\n    \"category\": \"detected_category\",\n    \"confidenceLevel\": \"high|medium|low\",\n    \"retailerStrategy\": \"{{ $json.retailerStrategy }}\",\n    \"needsUserInput\": {{ $json.needsUserInput }},\n    \"userRegion\": \"{{ $json.detectedRegion }}\"\n  }\n}\n\n**IDENTIFICATION PROCESS:**\n1. **Visual Analysis**: Examine image for product category, brand, model, materials, colors, size indicators\n2. **Confidence Assessment**: HIGH (clear identification), MEDIUM (general type), LOW (basic category only)\n3. **Smart Retailer Logic**:\n   {% if $json.retailerStrategy == 'user_specified' %}\n   - **USER SPECIFIED**: Focus ONLY on {{ $json.recommendedRetailers.join(', ') }}\n   {% elif $json.retailerStrategy == 'region_optimized' %}\n   - **REGION OPTIMIZED**: Mix local + global for {{ $json.detectedRegion }}\n   {% else %}\n   - **GLOBAL FALLBACK**: Prioritize worldwide accessible retailers (Amazon, eBay, AliExpress)\n   {% endif %}\n\n**OUTPUT STRUCTURE (Keep concise - max 250 words):**\n\n## 🔍 **Product Identified**\n**{{ product_name }}** - {{ brand_name }}\n{% if confidence is not HIGH %}*{{ confidence_note }}*{% endif %}\n\n## 🛒 **Shopping Options**\n{% if $json.retailerStrategy == 'user_specified' %}\n{% for retailer in $json.recommendedRetailers %}\n- **[{{ retailer | title }} - Product Name (€price)](real-url)** - {{ shipping_info }}\n{% endfor %}\n{% elif $json.retailerStrategy == 'region_optimized' %}\n**Local Options ({{ $json.detectedRegion }}):**\n- **[Local Store - Product Name](url)** - Fast delivery\n**Global Options:**\n- **[Amazon - Product Name](url)** - International shipping\n{% else %}\n**Worldwide Options:**\n- **[Amazon Global - Product Name](url)** - Ships to 100+ countries\n- **[Brand Store - Product Name](url)** - Official retailer\n- **[eBay - Product Name](url)** - Global marketplace\n{% endif %}\n\n{% if $json.intentAnalysis.wantsColorChange %}\n## 🎨 **{{ requested_color }} Available**\nAll retailers above stock this color.\n{% endif %}\n\n{% if $json.intentAnalysis.wantsSizeChange %}\n## 📏 **Size {{ requested_size }} Available**  \nAvailable at listed retailers.\n{% endif %}\n\n**CRITICAL GUIDELINES:**\n- Always provide REAL shopping links (not placeholder URLs)\n- Include actual prices in local currency when possible\n- Respect user's retailer preferences completely\n- Handle ANY product category (electronics, fashion, home, beauty, sports, etc.)\n- Keep responses focused and under 250 words\n- Prioritize global accessibility when location unknown",
+              "role": "system"
+            },
+            {
+              "content": "=User Request: {{ $json.chatInput || 'Help me identify this product and find where to buy it' }}\n\n{% if $json.hasImages %}\nI have uploaded {{ $json.processedFiles.length }} image(s) for analysis.\n{% else %}\nNo images uploaded - please help based on text description.\n{% endif %}\n\n{% if $json.userSpecifiedRetailers.length > 0 %}\nPlease check these retailers: {{ $json.userSpecifiedRetailers.join(', ') }}\n{% endif %}\n\n{% if $json.excludedRetailers.length > 0 %}\nPlease avoid: {{ $json.excludedRetailers.join(', ') }}\n{% endif %}\n\nProvide shopping recommendations in the required JSON format."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 3000,
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        128,
+        320
+      ],
+      "id": "289580c0-6ee1-4a48-a5d3-dd6e541ee669",
+      "name": "Fixed GPT-4o Processor"
+    },
+    {
+      "parameters": {
+        "content": "The workflow only shows one retailer instead of all detected retailers, returns fake placeholder URLs instead of real product links, and the GPT model lacks a web search function to access real-time product data.",
+        "height": 220,
+        "width": 260,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "843b35c9-7eb5-47a3-8118-fe0fcbc9ad44",
+      "name": "Sticky Note"
+    }
+  ],
+  "connections": {
+    "When Called by Main Agent": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Input Processor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Input Processor1": {
+      "main": [
+        [
+          {
+            "node": "Fixed GPT-4o Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fixed GPT-4o Processor": {
+      "main": [
+        [
+          {
+            "node": "Final Response Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {
+    "When Called by Main Agent": [
+      {
+        "json": {
+          "chatInput": "Find these in a different color in zalnado and aboutyou. I need size 40",
+          "sessionId": "fashion_test_session_001",
+          "userLocation": "Berlin, Germany",
+          "timezone": "Europe/Berlin",
+          "language": "en-DE",
+          "files": [
+            {
+              "fileName": "converse_chuck_taylor_white.jpg",
+              "mimeType": "image/jpeg",
+              "data": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD..."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "triggerCount": 0,
+  "meta": null
+}

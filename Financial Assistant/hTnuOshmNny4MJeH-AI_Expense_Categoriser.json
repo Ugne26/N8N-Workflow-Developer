@@ -1,0 +1,235 @@
+{
+  "name": "AI Expense Categoriser",
+  "nodes": [
+    {
+      "parameters": {
+        "functionCode": "// N26-inspired comprehensive categorization rules\nconst merchantRules = {\n  'Transport & Car': [\n    'UBER', 'LYFT', 'TAXI', 'CAB', 'SHELL', 'BP', 'ESSO', 'TEXACO', 'TOTAL',\n    'TFL', 'TRANSPORT FOR LONDON', 'OYSTER', 'PARKOPEDIA', 'JUST PARK',\n    'DVLA', 'MOT', 'AA', 'RAC', 'HALFORDS', 'KWIK FIT', 'TRAIN', 'BUS'\n  ],\n  'Food & Groceries': [\n    'TESCO', 'SAINSBURY', 'ASDA', 'MORRISONS', 'ALDI', 'LIDL', 'WAITROSE',\n    'MARKS SPENCER', 'ICELAND', 'COOP', 'SPAR', 'PREMIER', 'COSTCO', 'WHOLESALE'\n  ],\n  'Bars & Restaurants': [\n    'STARBUCKS', 'COSTA', 'CAFE NERO', 'PRET', 'MCDONALD', 'BURGER KING',\n    'KFC', 'SUBWAY', 'PIZZA HUT', 'DOMINO', 'NANDO', 'GREGGS', 'RESTAURANT',\n    'PUB', 'BAR', 'CAFE', 'BISTRO', 'TAKEAWAY', 'DELIVEROO', 'UBER EATS', 'JUST EAT'\n  ],\n  'Shopping': [\n    'AMAZON', 'EBAY', 'ARGOS', 'CURRY', 'PC WORLD', 'JOHN LEWIS', 'NEXT',\n    'H&M', 'ZARA', 'PRIMARK', 'TK MAXX', 'BOOTS', 'SUPERDRUG', 'CLOTHING',\n    'ELECTRONICS', 'APPLE STORE', 'SAMSUNG'\n  ],\n  'Entertainment': [\n    'SPOTIFY', 'NETFLIX', 'AMAZON PRIME', 'DISNEY', 'APPLE MUSIC', 'YOUTUBE',\n    'CINEMA', 'ODEON', 'VUE', 'CINEWORLD', 'STEAM', 'PLAYSTATION', 'XBOX',\n    'NINTENDO', 'THEATER', 'CONCERT', 'GYM', 'FITNESS'\n  ],\n  'Health & Drugstore': [\n    'BOOTS', 'SUPERDRUG', 'PHARMACY', 'CHEMIST', 'NHS', 'DOCTOR', 'DENTIST',\n    'HOSPITAL', 'MEDICAL', 'OPTICIAN', 'SPECSAVERS', 'VISION EXPRESS',\n    'BUPA', 'HEALTHCARE', 'PHYSIOTHERAPY'\n  ],\n  'Bills & Utilities': [\n    'BRITISH GAS', 'EDF', 'EON', 'SCOTTISH POWER', 'BULB', 'OCTOPUS ENERGY',\n    'BT', 'SKY', 'VIRGIN MEDIA', 'EE', 'VODAFONE', 'THREE', 'O2',\n    'WATER', 'COUNCIL TAX', 'INSURANCE', 'AVIVA', 'DIRECT LINE'\n  ],\n  'Education': [\n    'UNIVERSITY', 'COLLEGE', 'SCHOOL', 'COURSE', 'UDEMY', 'COURSERA',\n    'BOOKS', 'WATERSTONES', 'WHY', 'ACADEMIC', 'TUITION', 'EDUCATION'\n  ],\n  'Travel & Holiday': [\n    'BOOKING.COM', 'AIRBNB', 'EXPEDIA', 'HOTELS.COM', 'PREMIER INN',\n    'TRAVELODGE', 'HOLIDAY INN', 'RYANAIR', 'EASYJET', 'BRITISH AIRWAYS',\n    'EUROSTAR', 'FLIGHT', 'HOTEL', 'ACCOMMODATION'\n  ],\n  'Cash & ATM': [\n    'ATM', 'CASH', 'WITHDRAWAL', 'CASHBACK', 'LINK', 'SANTANDER ATM',\n    'BARCLAYS ATM', 'LLOYDS ATM', 'HSBC ATM', 'NATWEST ATM'\n  ],\n  'Income': [\n    'SALARY', 'WAGE', 'REFUND', 'CASHBACK', 'INTEREST', 'DIVIDEND',\n    'BONUS', 'COMMISSION', 'FREELANCE', 'TRANSFER IN', 'DEPOSIT'\n  ]\n};\n\nreturn items.map(item => {\n  const tx = item.json;\n  const description = tx.description || '';\n  \n  for (const [category, keywords] of Object.entries(merchantRules)) {\n    for (const keyword of keywords) {\n      if (description.includes(keyword)) {\n        tx.category = category;\n        tx.method = 'rule';\n        tx.explanation = 'Matched keyword: ' + keyword;\n        return { json: tx };\n      }\n    }\n  }\n  \n  return { json: tx };\n});"
+      },
+      "id": "d56a9e84-8ef1-44ec-8cd5-6585c0584039",
+      "name": "Apply Rules1",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        0,
+        -1280
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {},
+      "id": "8b79f6dc-c38f-42a9-badb-aa33cf953170",
+      "name": "Webhook Response1",
+      "type": "n8n-nodes-base.webhookResponse",
+      "position": [
+        1520,
+        -1296
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "categorize-expenses-n26",
+        "options": {}
+      },
+      "id": "a65c183e-0b0a-421f-b66d-01c45dcfdca0",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "position": [
+        -896,
+        -1280
+      ],
+      "typeVersion": 2.1,
+      "webhookId": "5cce30b5-94e7-4765-a991-99817910bc8e"
+    },
+    {
+      "parameters": {
+        "functionCode": "if (!items[0].json.items || !Array.isArray(items[0].json.items) || items[0].json.items.length === 0) {\n  throw new Error('Invalid input: items array is required');\n}\nreturn items[0].json.items.map(tx => ({ json: tx }));"
+      },
+      "id": "914c41f7-6e9f-4b3a-bf7c-e6c2ca0593f2",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        -592,
+        -1280
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const tx = item.json;\n  tx.description = tx.description ? tx.description.trim().toUpperCase().replace(/[^A-Z0-9 ]/g, '') : '';\n  return { json: tx };\n});"
+      },
+      "id": "abdc0e70-d8d8-44ab-84b6-39b2024d631f",
+      "name": "Normalize Data",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        -288,
+        -1280
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ !!$json[\"category\"] }}",
+              "operation": "isTrue"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "deceb812-bfa4-4a1a-b88d-f7a1abcc27fd",
+      "name": "IF Categorized?",
+      "type": "n8n-nodes-base.if",
+      "position": [
+        320,
+        -1280
+      ],
+      "typeVersion": 2.2
+    },
+    {
+      "parameters": {
+        "resource": "chat",
+        "chatModel": "gpt-4o-mini",
+        "options": {},
+        "requestOptions": {}
+      },
+      "id": "a08b5607-7516-4bd8-b676-20aad31b1cda",
+      "name": "OpenAI Categorization",
+      "type": "n8n-nodes-base.openAi",
+      "position": [
+        624,
+        -1136
+      ],
+      "typeVersion": 1.1,
+      "credentials": {
+        "openAiApi": {
+          "id": "n0OHozj2D7X4K1XE",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const tx = item.json;\n  let ai;\n  try {\n    ai = JSON.parse(item.json.answer || '{}');\n  } catch (e) {\n    ai = { category: 'Other' };\n  }\n  tx.category = ai.category || 'Other';\n  tx.method = 'ai';\n  tx.explanation = 'AI classification';\n  return { json: tx };\n});"
+      },
+      "id": "d3b9570c-7d3a-4b11-ba5e-442c00fcfb61",
+      "name": "Parse AI Result",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        928,
+        -1136
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(item => {\n  const tx = item.json;\n  tx.categorized_at = '2025-08-18T13:23:49.604634Z';\n  return { json: tx };\n});"
+      },
+      "id": "f04842e8-5a8a-4a7d-bc9d-ee8fe1184ed1",
+      "name": "Finalize Response",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        1216,
+        -1296
+      ],
+      "typeVersion": 1
+    }
+  ],
+  "connections": {
+    "Apply Rules1": {
+      "main": [
+        [
+          {
+            "node": "IF Categorized?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Normalize Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Data": {
+      "main": [
+        [
+          {
+            "node": "Apply Rules1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Categorized?": {
+      "main": [
+        [
+          {
+            "node": "Finalize Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "OpenAI Categorization",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Categorization": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Result": {
+      "main": [
+        [
+          {
+            "node": "Finalize Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

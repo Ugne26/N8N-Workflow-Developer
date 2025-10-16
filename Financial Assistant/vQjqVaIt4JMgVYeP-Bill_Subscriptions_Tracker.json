@@ -1,0 +1,539 @@
+{
+  "name": "Bill & Subscriptions Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "name": "Trigger Daily at 6AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1072,
+        112
+      ],
+      "id": "73153442-a24a-4504-9f8f-00a7950d7966"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1962578831,
+          "mode": "list",
+          "cachedResultName": "Bills & Subscriptions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1962578831"
+        },
+        "options": {}
+      },
+      "name": "Fetch Subscriptions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -864,
+        112
+      ],
+      "id": "36c1d97e-4092-4cfa-9b95-f45272144cef",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Create hash for each subscription\nconst subs = $input.all();\nfor (const sub of subs) {\n  sub.json.Hash = `${sub.json['User ID']}_${sub.json.Name}_${sub.json.Amount}_${sub.json.Frequency}`.replace(/\\s/g, '').toLowerCase();\n}\nreturn subs;"
+      },
+      "name": "Check for Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -672,
+        112
+      ],
+      "id": "03133db4-8a89-4592-a727-b951420196a4"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "options": {}
+      },
+      "name": "Fetch Bank Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -464,
+        -80
+      ],
+      "id": "caac5f44-602d-44c6-8281-c58893107f31",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// AutoPay validation: match by UserID + Amount ±3 days\nconst subs = $items('Check for Duplicates');\nconst txs = $input.all();\n\nfunction dateDiff(a, b) {\n  return Math.abs(new Date(a) - new Date(b)) / (1000*60*60*24);\n}\n\nconst results = [];\nfor (const sub of subs) {\n  const due = new Date(sub.json['Next Due Date']);\n  const match = txs.find(tx => tx.json['User ID'] === sub.json['User ID'] &&\n                                Math.abs(parseFloat(tx.json.Amount) - parseFloat(sub.json.Amount)) < 0.5 &&\n                                dateDiff(tx.json.Date, due) <= 3);\n  if (sub.json['Auto Pay'] === 'Yes') {\n    if (match) {\n      sub.json.Status = 'Paid';\n      sub.json.AlertType = 'AutoPay Success';\n    } else {\n      sub.json.Status = 'Alert';\n      sub.json.AlertType = 'AutoPay Failure';\n    }\n  }\n  results.push(sub);\n}\nreturn results;"
+      },
+      "name": "Check AutoPay",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        -80
+      ],
+      "id": "8811c9ad-5bcb-47e6-bb4f-6c85c13c53b8"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Manual due date validation\nconst subs = $input.all();\nconst now = new Date();\n\nfor (const sub of subs) {\n  if (sub.json['Auto Pay'] === 'No') {\n    const due = new Date(sub.json['Next Due Date']);\n    const daysLeft = (due - now) / (1000*60*60*24);\n    if (daysLeft <= 3 && daysLeft >= 0) {\n      sub.json.AlertType = 'Reminder';\n      sub.json.Status = 'Due Soon';\n    } else if (daysLeft < 0) {\n      sub.json.AlertType = 'Overdue';\n      sub.json.Status = 'Alert';\n    }\n  }\n}\nreturn subs;"
+      },
+      "name": "Check Manual Due Dates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        304
+      ],
+      "id": "7f231a05-6d26-4ef2-9371-857f2522d42d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Group alerts into daily digest\nconst subs = $input.all();\nlet message = `🔔 Daily Subscription Digest (${new Date().toISOString().slice(0,10)})\\n`;\nfor (const sub of subs) {\n  if (sub.json.AlertType) {\n    message += `- ${sub.json.Name} (€${sub.json.Amount}) → ${sub.json.AlertType}\\n`;\n  }\n}\nreturn [{ json: { message, alerts: subs.map(s => s.json) } }];"
+      },
+      "name": "Group Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -64,
+        112
+      ],
+      "id": "8b011f6c-1470-4d34-8498-41b1018fbf5e"
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#finance-alerts",
+        "text": "={{ $json.message }}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "name": "Send Slack Digest",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        160,
+        304
+      ],
+      "id": "3e001474-850e-4ccf-a00b-97217a0e2b06",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1962578831,
+          "mode": "list",
+          "cachedResultName": "Bills & Subscriptions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1962578831"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Frequency (days)",
+              "displayName": "Frequency (days)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Next Due Date",
+              "displayName": "Next Due Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Auto Pay",
+              "displayName": "Auto Pay",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Checked",
+              "displayName": "Last Checked",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Update Subscriptions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        144,
+        -80
+      ],
+      "id": "13420b15-7be8-46a5-8715-34f2743b3bc4",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1682341580,
+          "mode": "list",
+          "cachedResultName": "Alerts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1682341580"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alert Type",
+              "displayName": "Alert Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Category/Name",
+              "displayName": "Category/Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Log Alerts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        336,
+        112
+      ],
+      "id": "5f683805-2f4f-4851-a19d-39b63a0eb891",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Trigger Daily at 6AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Subscriptions": {
+      "main": [
+        [
+          {
+            "node": "Check for Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Fetch Bank Transactions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check Manual Due Dates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Bank Transactions": {
+      "main": [
+        [
+          {
+            "node": "Check AutoPay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check AutoPay": {
+      "main": [
+        [
+          {
+            "node": "Group Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Manual Due Dates": {
+      "main": [
+        [
+          {
+            "node": "Group Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Group Alerts": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Digest",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Update Subscriptions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

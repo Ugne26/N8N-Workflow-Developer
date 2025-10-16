@@ -1,0 +1,1348 @@
+{
+  "name": "Live Bank-Feed Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 65902008,
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=65902008"
+        },
+        "options": {}
+      },
+      "id": "a7ecc2a2-e5c1-4974-88af-62cac656b4f2",
+      "name": "0. Load Global Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -2912,
+        1808
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Rate limiting and authentication preparation\nconst account = $input.first().json;\nconst bankType = account.Bank.toLowerCase();\nconst config = $items('0. Load Global Config');\n\n// Get retry limit and rate limit from config\nconst retryLimit = config.find(c => c.json.Key === 'Retry Limit')?.json.Value || 3;\nconst rateLimitDelay = config.find(c => c.json.Key === 'Rate Limit Delay')?.json.Value || 1000;\n\n// Add delay to respect rate limits\nif (bankType === 'revolut') {\n  // Revolut has stricter limits - 4 requests per account per day\n  await new Promise(resolve => setTimeout(resolve, 2000));\n} else {\n  await new Promise(resolve => setTimeout(resolve, rateLimitDelay));\n}\n\nreturn {\n  json: {\n    ...account,\n    retryLimit,\n    rateLimitDelay\n  }\n};"
+      },
+      "id": "84d3f5bf-01b5-4a58-8590-e74b2888de75",
+      "name": "2a. Prepare API Call",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2192,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build bank-specific API requests\nconst account = $input.first().json;\nconst bankType = account.Bank.toLowerCase();\nconst accountId = account['Account ID'];\nconst lastSync = account['Last Sync'];\nconst credentialsRef = account['Credentials Ref'];\n\nlet apiConfig = {};\n\nswitch(bankType) {\n  case 'revolut':\n  case 'gocardless':\n    // First get access token if needed\n    apiConfig = {\n      method: 'GET',\n      url: `https://bankaccountdata.gocardless.com/api/v2/accounts/${accountId}/transactions`,\n      headers: {\n        'accept': 'application/json',\n        'Authorization': `Bearer {{$node[\"Get Access Token\"].json.access}}`\n      },\n      params: {\n        'date_from': lastSync ? new Date(lastSync).toISOString().split('T')[0] : new Date(Date.now() - 7*24*60*60*1000).toISOString().split('T')[0],\n        'date_to': new Date().toISOString().split('T')[0]\n      }\n    };\n    break;\n    \n  case 'wise':\n    apiConfig = {\n      method: 'GET', \n      url: `https://api.wise.com/v1/profiles/{profileId}/transactions`,\n      headers: {\n        'Authorization': `Bearer {{$credentials.${credentialsRef}.token}}`,\n        'Content-Type': 'application/json'\n      },\n      params: {\n        'since': lastSync || new Date(Date.now() - 7*24*60*60*1000).toISOString(),\n        'until': new Date().toISOString()\n      }\n    };\n    break;\n    \n  case 'monzo':\n    apiConfig = {\n      method: 'GET',\n      url: `https://api.monzo.com/transactions`,\n      headers: {\n        'Authorization': `Bearer {{$credentials.${credentialsRef}.token}}`\n      },\n      params: {\n        'account_id': accountId,\n        'since': lastSync || new Date(Date.now() - 7*24*60*60*1000).toISOString()\n      }\n    };\n    break;\n    \n  default:\n    throw new Error(`Unsupported bank type: ${bankType}`);\n}\n\nreturn {\n  json: {\n    ...account,\n    apiConfig\n  }\n};"
+      },
+      "id": "b8fdcd65-9cd9-4a8b-8e6f-f5ad3b174b98",
+      "name": "2b. Build API Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1952,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://bankaccountdata.gocardless.com/api/v2/token/new/",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "accept",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "secret_id",
+              "value": "={{$credentials.gocardless.secret_id}}"
+            },
+            {
+              "name": "secret_key",
+              "value": "={{$credentials.gocardless.secret_key}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0743994d-4721-4283-9c5e-3906c0ebe30a",
+      "name": "Get Access Token",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1616,
+        1696
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.apiConfig.url }}",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {},
+            {}
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "1060481e-3b99-4581-9850-60ae59bdcd69",
+      "name": "2c. Fetch New Transactions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1408,
+        1856
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// ENHANCED UNIVERSAL TRANSLATOR\n// Converts raw data from different banks into one standard format\n\nconst items = $input.all();\nconst accountInfo = $items('Loop Through Each Account1')[0].json;\nconst bankType = accountInfo.Bank.toLowerCase();\nconst standardizedTransactions = [];\n\nfunction generateHash(account, date, amount, merchant) {\n  return `${account}_${date}_${amount}_${merchant}`.replace(/\\s/g, '').toLowerCase();\n}\n\nfor (const item of items) {\n  if (item.json.error) {\n    // Skip error items - they'll be handled by error path\n    continue;\n  }\n  \n  let transactions = [];\n  \n  try {\n    switch(bankType) {\n      case 'revolut':\n      case 'gocardless':\n        transactions = item.json.transactions?.booked || [];\n        for (const tx of transactions) {\n          const amount = parseFloat(tx.transactionAmount.amount);\n          const merchant = tx.creditorName || tx.remittanceInformationUnstructuredArray?.[0] || 'Unknown';\n          \n          standardizedTransactions.push({\n            json: {\n              'Transaction ID': tx.transactionId,\n              'Account': accountInfo['Account Name'],\n              'Date': tx.bookingDate,\n              'Amount': Math.abs(amount),\n              'Currency': tx.transactionAmount.currency,\n              'Merchant': merchant,\n              'Description': tx.remittanceInformationUnstructuredArray?.join(' ') || '',\n              'Type': amount >= 0 ? 'Income' : 'Expense',\n              'Source': 'Bank-Sync',\n              'Hash': generateHash(accountInfo['Account Name'], tx.bookingDate, Math.abs(amount), merchant),\n              'Raw Data': JSON.stringify(tx)\n            }\n          });\n        }\n        break;\n        \n      case 'wise':\n        transactions = item.json.data || [];\n        for (const tx of transactions) {\n          const amount = parseFloat(tx.amount.value);\n          const merchant = tx.details.description || tx.details.merchant?.name || 'Unknown';\n          \n          standardizedTransactions.push({\n            json: {\n              'Transaction ID': tx.id,\n              'Account': accountInfo['Account Name'],\n              'Date': new Date(tx.date).toISOString().slice(0, 10),\n              'Amount': Math.abs(amount),\n              'Currency': tx.amount.currency,\n              'Merchant': merchant,\n              'Description': tx.details.description || '',\n              'Type': amount >= 0 ? 'Income' : 'Expense',\n              'Source': 'Bank-Sync',\n              'Hash': generateHash(accountInfo['Account Name'], new Date(tx.date).toISOString().slice(0, 10), Math.abs(amount), merchant),\n              'Raw Data': JSON.stringify(tx)\n            }\n          });\n        }\n        break;\n        \n      case 'monzo':\n        transactions = item.json.transactions || [];\n        for (const tx of transactions) {\n          const amount = parseFloat(tx.amount) / 100; // Monzo uses pence\n          const merchant = tx.merchant?.name || tx.description || 'Unknown';\n          \n          standardizedTransactions.push({\n            json: {\n              'Transaction ID': tx.id,\n              'Account': accountInfo['Account Name'],\n              'Date': new Date(tx.created).toISOString().slice(0, 10),\n              'Amount': Math.abs(amount),\n              'Currency': tx.currency.toUpperCase(),\n              'Merchant': merchant,\n              'Description': tx.description || '',\n              'Type': amount >= 0 ? 'Income' : 'Expense',\n              'Source': 'Bank-Sync',\n              'Hash': generateHash(accountInfo['Account Name'], new Date(tx.created).toISOString().slice(0, 10), Math.abs(amount), merchant),\n              'Raw Data': JSON.stringify(tx)\n            }\n          });\n        }\n        break;\n        \n      default:\n        throw new Error(`Unsupported bank type: ${bankType}`);\n    }\n  } catch (error) {\n    console.error(`Error processing ${bankType} transactions:`, error);\n    throw error;\n  }\n}\n\nreturn standardizedTransactions;"
+      },
+      "id": "c124892f-f9a2-4414-8af1-41c07edff937",
+      "name": "3. Universal Translator",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1056,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "options": {}
+      },
+      "id": "24d15b74-411b-4361-92b6-ffa2e2307791",
+      "name": "Fetch Existing IDs & Hashes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -1120,
+        1536
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ENHANCED DEDUPLICATION\n// Checks both Transaction ID and Hash for bulletproof duplicate detection\n\nconst newTransactions = $items('3. Universal Translator');\nconst existingData = $items('Fetch Existing IDs & Hashes');\n\nconst existingIds = new Set();\nconst existingHashes = new Set();\n\n// Build lookup sets\nfor (const item of existingData) {\n  if (item.json['Transaction ID']) {\n    existingIds.add(item.json['Transaction ID']);\n  }\n  if (item.json['Hash']) {\n    existingHashes.add(item.json['Hash']);\n  }\n}\n\nconst uniqueTransactions = [];\nconst duplicatesFound = [];\n\nfor (const tx of newTransactions) {\n  const txId = tx.json['Transaction ID'];\n  const txHash = tx.json['Hash'];\n  \n  // Check both ID and hash for duplicates\n  const isDuplicate = existingIds.has(txId) || existingHashes.has(txHash);\n  \n  if (!isDuplicate) {\n    uniqueTransactions.push(tx);\n    // Add to sets to prevent duplicates within this batch\n    existingIds.add(txId);\n    existingHashes.add(txHash);\n  } else {\n    duplicatesFound.push({\n      json: {\n        ...tx.json,\n        'Duplicate Reason': existingIds.has(txId) ? 'Transaction ID' : 'Hash Match'\n      }\n    });\n  }\n}\n\nconsole.log(`Found ${duplicatesFound.length} duplicates, ${uniqueTransactions.length} new transactions`);\n\nreturn uniqueTransactions;"
+      },
+      "id": "62be634f-358d-4679-a186-7061c8e87bac",
+      "name": "4. Enhanced De-duplication",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -816,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Transaction ID",
+              "displayName": "Transaction ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Currency",
+              "displayName": "Currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Merchant",
+              "displayName": "Merchant",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Type",
+              "displayName": "Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Hash",
+              "displayName": "Hash",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Raw Data",
+              "displayName": "Raw Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "cb93f602-a560-4510-bfe1-58f2f0781da3",
+      "name": "5. Append New Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -576,
+        1792
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 362023160,
+          "mode": "list",
+          "cachedResultName": "Bank Accounts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=362023160"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account Name",
+              "displayName": "Account Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bank",
+              "displayName": "Bank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account ID",
+              "displayName": "Account ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Credentials Ref",
+              "displayName": "Credentials Ref",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Last Sync",
+              "displayName": "Last Sync",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "1e9d3927-3360-4297-b822-7f39f344d610",
+      "name": "6. Update Last Sync Timestamp",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -320,
+        1792
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1463316629,
+          "mode": "list",
+          "cachedResultName": "Sync Status",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1463316629"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Account Name": "={{ $items('Loop Through Each Account1')[0]?.json?.['Account Name'] || 'Unknown' }}",
+            "Bank": "={{ $items('Loop Through Each Account1')[0]?.json?.Bank || 'Unknown' }}",
+            "Status": "Failed",
+            "Error Message": "={{ $json.error?.message || $json.message || 'Unknown error' }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account Name",
+              "displayName": "Account Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bank",
+              "displayName": "Bank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Records Synced",
+              "displayName": "Records Synced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Duplicates Found",
+              "displayName": "Duplicates Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e735ead3-6075-4360-91aa-1f2d78659bc8",
+      "name": "Log API Failure",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -864,
+        2128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "user",
+        "user": {
+          "__rl": true,
+          "value": "U09DWDQ1ZGQ",
+          "mode": "list",
+          "cachedResultName": "balnaityteugne"
+        },
+        "text": "🚨 Bank-Sync Alert: {{ $items('Loop Through Each Account')[0]?.json?.['Account Name'] || 'Unknown Account' }} sync failed after {{ $items('0. Load Global Config').find(c => c.json.Key === 'Retry Limit')?.json.Value || 3 }} attempts.\\n\\nError: {{ $json.error?.message || 'Unknown error' }}\\n\\nPlease check the sync logs and account credentials.",
+        "otherOptions": {}
+      },
+      "id": "b372d226-6cd7-4601-b6d9-cadfe640be53",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        -336,
+        2176
+      ],
+      "webhookId": "77b2476a-36d8-4110-b89d-de5a19018f9d",
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check if any accounts had critical failures\nconst failureItems = $items('Log API Failure');\nconst config = $items('0. Load Global Config');\n\nconst lowBalanceThreshold = parseFloat(\n  config.find(c => c.json.Key === 'Low Balance Threshold')?.json.Value || 100\n);\n\n// Fetch recent transactions to check balances\nconst recentTransactions = $items('5. Append New Transactions');\nlet totalBalance = 0;\n\nfor (const tx of recentTransactions) {\n  const amount = parseFloat(tx.json.Amount);\n  if (tx.json.Type === 'Income') {\n    totalBalance += amount;\n  } else {\n    totalBalance -= amount;\n  }\n}\n\nconst alerts = [];\n\n// Check for critical sync failures\nif (failureItems.length > 0) {\n  alerts.push({\n    type: 'sync_failure',\n    message: `${failureItems.length} account(s) failed to sync`,\n    severity: 'high'\n  });\n}\n\n// Check for low balance\nif (totalBalance < lowBalanceThreshold) {\n  alerts.push({\n    type: 'low_balance',\n    message: `Balance below threshold: ${totalBalance}`,\n    severity: 'medium'\n  });\n}\n\nreturn alerts.map(alert => ({ json: alert }));"
+      },
+      "id": "c274d9a7-7a64-455d-92c0-68396daad4ab",
+      "name": "System Health Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        1792
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1682341580,
+          "mode": "list",
+          "cachedResultName": "Alerts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1682341580"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Alert Type": "={{ $json.type }}",
+            "Message": "={{ $json.message }}",
+            "Status": "Active"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alert Type",
+              "displayName": "Alert Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Category/Name",
+              "displayName": "Category/Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "eaa06571-611b-4ccd-9994-a48e24b59be1",
+      "name": "Log System Alerts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        416,
+        1792
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 4
+            }
+          ]
+        }
+      },
+      "id": "6214e873-a9fc-4fa6-ae35-0d62c2c5fa97",
+      "name": "Run Daily at 4 AM1",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -3120,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 362023160,
+          "mode": "list",
+          "cachedResultName": "Bank Accounts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=362023160"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Status",
+              "lookupValue": "Active"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0b31b124-4e91-4343-9718-e728a47c2008",
+      "name": "1. Fetch Active Bank Accounts1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -2672,
+        1808
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "ac137be5-600a-4b18-8482-495037c5c8dc",
+      "name": "Loop Through Each Account1",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        -2432,
+        1808
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1463316629,
+          "mode": "list",
+          "cachedResultName": "Sync Status",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1463316629"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ new Date().toISOString() }}",
+            "Account Name": "={{ $items('Loop Through Each Account1')[0].json['Account Name'] }}",
+            "Bank": "={{ $items('Loop Through Each Account1')[0].json.Bank }}",
+            "Status": "Success",
+            "Records Synced": "={{ $input.all().length }}",
+            "Duplicates Found": "={{ $items('4. Enhanced De-duplication')[0].json.duplicatesCount || 0 }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Account Name",
+              "displayName": "Account Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Bank",
+              "displayName": "Bank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Records Synced",
+              "displayName": "Records Synced",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Duplicates Found",
+              "displayName": "Duplicates Found",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "c789ca27-ffb1-4063-97f5-e3bd28dfc675",
+      "name": "7. Log Success1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -80,
+        1792
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "0. Load Global Config": {
+      "main": [
+        [
+          {
+            "node": "1. Fetch Active Bank Accounts1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2a. Prepare API Call": {
+      "main": [
+        [
+          {
+            "node": "2b. Build API Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2b. Build API Config": {
+      "main": [
+        [
+          {
+            "node": "Get Access Token",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "2c. Fetch New Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Access Token": {
+      "main": [
+        [
+          {
+            "node": "2c. Fetch New Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2c. Fetch New Transactions": {
+      "main": [
+        [
+          {
+            "node": "3. Universal Translator",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log API Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Universal Translator": {
+      "main": [
+        [
+          {
+            "node": "4. Enhanced De-duplication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Existing IDs & Hashes": {
+      "main": [
+        [
+          {
+            "node": "4. Enhanced De-duplication",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Enhanced De-duplication": {
+      "main": [
+        [
+          {
+            "node": "5. Append New Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Append New Transactions": {
+      "main": [
+        [
+          {
+            "node": "6. Update Last Sync Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Update Last Sync Timestamp": {
+      "main": [
+        [
+          {
+            "node": "7. Log Success1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log API Failure": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Alert": {
+      "main": [
+        [
+          {
+            "node": "System Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "System Health Check": {
+      "main": [
+        [
+          {
+            "node": "Log System Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Daily at 4 AM1": {
+      "main": [
+        [
+          {
+            "node": "0. Load Global Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Fetch Active Bank Accounts1": {
+      "main": [
+        [
+          {
+            "node": "Loop Through Each Account1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Through Each Account1": {
+      "main": [
+        [
+          {
+            "node": "2a. Prepare API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "7. Log Success1": {
+      "main": [
+        [
+          {
+            "node": "System Health Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

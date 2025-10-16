@@ -1,0 +1,1110 @@
+{
+  "name": "Cash Flow Calendar",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 8
+            }
+          ]
+        }
+      },
+      "id": "6ea8abb1-a405-4d12-945e-5ff63b9e65c5",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -464,
+        144
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 65902008,
+          "mode": "list",
+          "cachedResultName": "Config",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=65902008"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Key",
+              "lookupValue": "Balance"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0622805-9efe-45ed-b931-90fc606b3b79",
+      "name": "Fetch Current Balance",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "options": {}
+      },
+      "id": "cd55d7f0-9773-4326-b5b9-7a8b114b3c09",
+      "name": "Fetch Past Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        128
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Helper function to convert Excel serial date numbers to JS Date objects\nfunction excelSerialDateToJSDate(serial) {\n  if (typeof serial !== 'number' || isNaN(serial)) return null;\n  const utc_days = Math.floor(serial - 25569);\n  const date = new Date(utc_days * 86400 * 1000);\n  const timezoneOffset = date.getTimezoneOffset() * 60000;\n  return new Date(date.getTime() + timezoneOffset);\n}\n\nconst tx = $input.all().map(i => i.json);\nconst now = new Date();\nconst cutoff = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);\n\nconst spending = tx.filter(r => {\n  const d = excelSerialDateToJSDate(r.Date);\n  if (!d) return false;\n  const type = (r.Type || '').toLowerCase();\n  const isExpense = type !== 'income' && type !== 'transfer' && type !== 'refund';\n  return d >= cutoff && isExpense && !isNaN(parseFloat(r.Amount));\n});\n\nconst totalSpent = spending.reduce((sum, r) => sum + Math.abs(parseFloat(r.Amount)), 0);\nconst dailyBurn = totalSpent > 0 ? totalSpent / 90 : 0;\n\nreturn [{ json: { dailyBurn: dailyBurn.toFixed(2) } }];\n"
+      },
+      "id": "3f92ddaa-dad0-431c-bd94-760c404afe6a",
+      "name": "Calculate Daily Burn Rate",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        240,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Type",
+              "lookupValue": "Income"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cb390732-45f5-48e6-a4fb-e297fec94456",
+      "name": "Fetch Income",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        288
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1962578831,
+          "mode": "list",
+          "cachedResultName": "Bills & Subscriptions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1962578831"
+        },
+        "options": {}
+      },
+      "id": "f0a9d0ab-cbdd-4b3c-b4c3-d1e3378c7036",
+      "name": "Fetch Recurring Bills",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        432
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        }
+      },
+      "id": "5500d84a-47b6-432d-903b-1d0b7b34ef2f",
+      "name": "Fetch One-Offs",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        0,
+        560
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cashflow-what-if",
+        "options": {}
+      },
+      "id": "1bf86c63-3bb9-4c11-b780-0adaa7574ac2",
+      "name": "What-if Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        416
+      ],
+      "webhookId": "ea09cfdd-3d96-4b19-83eb-01dd10a61670"
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "8ea7e0b3-e90b-40dd-83c7-94f983aa98e7",
+      "name": "Merge All Transactions",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        432,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Helper function to convert Excel serial date numbers to JS Date objects\nfunction excelSerialDateToJSDate(serial) {\n  if (typeof serial !== 'number' || isNaN(serial)) return null;\n  const utc_days = Math.floor(serial - 25569);\n  const date = new Date(utc_days * 86400 * 1000);\n  const timezoneOffset = date.getTimezoneOffset() * 60000;\n  return new Date(date.getTime() + timezoneOffset);\n}\n\nconst merged = $input.all();\nconst balanceData = $items(\"Fetch Current Balance\")[0].json;\nconst burnRateData = $items(\"Calculate Daily Burn Rate\")[0].json;\nconst whatIfData = $items(\"What-if Webhook\")[0] ? $items(\"What-if Webhook\")[0].json.body : null;\n\nconst STARTING_BALANCE = parseFloat(balanceData.Value || $env.STARTING_BALANCE || 0);\nconst DAILY_BURN = parseFloat(burnRateData.dailyBurn || 0);\nconst LOW_BALANCE_THRESHOLD = parseFloat($env.LOW_BALANCE_THRESHOLD || 200);\n\nconst today = new Date();\ntoday.setHours(0, 0, 0, 0);\nconst horizon = new Date(new Date().setDate(today.getDate() + 90));\nlet events = [];\n\n// Process all incoming transaction data sources\nmerged.forEach(branch => {\n  (branch || []).forEach(i => {\n    const r = i.json || {};\n    // Handle different column names from different sheets\n    const eventDate = r['Due Date'] || r.Date;\n    const cadence = r['Frequency (days)'] || r.CadenceDays;\n    const name = r.Name || r.Description;\n    \n    if (!eventDate || !r.Amount) return;\n    \n    // Convert date from either serial number or string\n    const start = typeof eventDate === 'number' ? excelSerialDateToJSDate(eventDate) : new Date(eventDate);\n    if (!start || isNaN(start)) return;\n\n    const amt = parseFloat(r.Amount);\n    if (isNaN(amt)) return;\n\n    const type = (r.Type || 'Transaction').toLowerCase();\n    const desc = name || '';\n    const every = parseInt(cadence) || 0;\n    let val = type.includes('income') || type.includes('salary') ? Math.abs(amt) : -Math.abs(amt);\n\n    if (every > 0) {\n      let d = new Date(start);\n      while (d <= horizon) {\n        if (d >= today) events.push({ Date: new Date(d), Amount: val, Description: desc, Type: type });\n        d.setDate(d.getDate() + every);\n      }\n    } else {\n      if (start >= today && start <= horizon) events.push({ Date: start, Amount: val, Description: desc, Type: type });\n    }\n  });\n});\n\n// Add what-if data if it exists\nif (whatIfData && whatIfData.Date && whatIfData.Amount) {\n    events.push({\n        Date: new Date(whatIfData.Date),\n        Amount: -Math.abs(parseFloat(whatIfData.Amount)),\n        Description: `(What-if) ${whatIfData.Description || 'Expense'}`,\n        Type: 'expense'\n    });\n}\n\n// Create the 90-day projection calendar\nevents.sort((a, b) => a.Date - b.Date);\nconst dailyProjections = {};\nfor (let i = 0; i < 90; i++) {\n  let d = new Date(today);\n  d.setDate(d.getDate() + i);\n  const key = d.toISOString().slice(0, 10);\n  dailyProjections[key] = { net: 0, tx: [], billCount: 0, incomeCount: 0 };\n}\n\n// Populate the calendar with events\nevents.forEach(e => {\n  const key = e.Date.toISOString().slice(0, 10);\n  if (dailyProjections[key]) {\n    dailyProjections[key].net += e.Amount;\n    dailyProjections[key].tx.push(e);\n    if (e.Type.includes('income')) dailyProjections[key].incomeCount++;\n    else dailyProjections[key].billCount++;\n  }\n});\n\n// Calculate the running balance\nlet balance = STARTING_BALANCE;\nconst output = [];\nObject.keys(dailyProjections).sort().forEach(key => {\n  const day = dailyProjections[key];\n  balance += day.net;\n  balance -= DAILY_BURN;\n  output.push({\n    json: {\n      Date: key,\n      Balance: +balance.toFixed(2),\n      NetChange: +day.net.toFixed(2),\n      TransactionCount: day.tx.length,\n      BillCount: day.billCount,\n      IncomeCount: day.incomeCount,\n      HasLowBalance: balance < LOW_BALANCE_THRESHOLD\n    }\n  });\n});\n\nreturn output;"
+      },
+      "id": "cf06fe30-29d5-4d15-b690-1eca4354380d",
+      "name": "Compute Daily Projection",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        720,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const projection = $input.all().map(i => i.json);\n\nconst lowest = projection.reduce((min, p) => p.Balance < min.Balance ? p : min, projection[0]);\n\nconst summary = {\n    GeneratedAt: new Date().toISOString(),\n    DaysProjected: projection.length,\n    LowestBalance: lowest.Balance,\n    LowestBalanceDate: lowest.Date,\n    EndBalance: projection[projection.length - 1].Balance\n};\n\nreturn [{ json: summary }];"
+      },
+      "id": "7ec9970e-9fc1-4286-ac5e-6aac3cac1b5e",
+      "name": "Summarize Projection",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        960,
+        768
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1131634836,
+          "mode": "list",
+          "cachedResultName": "Cash Flow Summary Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1131634836"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Period",
+              "displayName": "Period",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Period Type",
+              "displayName": "Period Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Income (Expected)",
+              "displayName": "Income (Expected)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fixed Expenses",
+              "displayName": "Fixed Expenses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Variable Expenses",
+              "displayName": "Variable Expenses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Net Cash Flow",
+              "displayName": "Net Cash Flow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Dining Out",
+              "displayName": "Dining Out",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Shopping",
+              "displayName": "Shopping",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Travel",
+              "displayName": "Travel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subscriptions",
+              "displayName": "Subscriptions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes/Insights",
+              "displayName": "Notes/Insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Diff Vs Prev",
+              "displayName": "Diff Vs Prev",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Change Vs Prev",
+              "displayName": "Change Vs Prev",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Diff Vs Avg",
+              "displayName": "Diff Vs Avg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Change Vs Avg",
+              "displayName": "Change Vs Avg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Generated At",
+              "displayName": "Generated At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "af4d9674-a413-44c8-9432-edbca8052d81",
+      "name": "Archive Summary",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1200,
+        768
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "balnaityteugne@gmail.com",
+          "mode": "list",
+          "cachedResultName": "balnaityteugne@gmail.com"
+        },
+        "start": "=={{$json.Date}}",
+        "end": "=={{$json.eventTitle}}",
+        "additionalFields": {
+          "allday": "yes",
+          "color": "=={{$json.colorId}}",
+          "description": "={{$json.eventDescription}}",
+          "showMeAs": "transparent",
+          "summary": "=={{$json.eventTitle}}"
+        }
+      },
+      "name": "Create Calendar Events",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        288
+      ],
+      "id": "17c587da-1917-4334-a394-55887c45ed0e",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "xQYCDsAWNFBJ4gcH",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json['HasLowBalance']}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "51c2ac10-abc8-4016-849c-1aac14b793ea",
+      "name": "Check for Low Balance",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        960,
+        528
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1131634836,
+          "mode": "list",
+          "cachedResultName": "Cash Flow Summary Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1131634836"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Log Type",
+              "lookupValue": "ALERT"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "bd00f0bc-b46b-429c-9a59-ace66c0afe17",
+      "name": "Fetch Sent Alerts Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1200,
+        512
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const lowBalanceDays = $input.all();\nconst sentAlertsLog = $items(\"Fetch Sent Alerts Log\").map(i => i.json);\n\nconst newAlerts = [];\nconst now = new Date();\n\nlowBalanceDays.forEach(dayItem => {\n    const day = dayItem.json;\n    const alreadySent = sentAlertsLog.find(log => {\n        const logDate = new Date(log.AlertSentAt);\n        return log.AlertForDate === day.Date && (now - logDate) < 3 * 24 * 60 * 60 * 1000;\n    });\n\n    if (!alreadySent) {\n        newAlerts.push(dayItem);\n    }\n});\n\nreturn newAlerts;"
+      },
+      "id": "3a04ac71-05f3-45a0-ab3c-9836661a262f",
+      "name": "Filter New Alerts",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1440,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#finance-alerts",
+        "text": "={{$json['Message']}}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "1ce44d83-1bf1-4981-9af4-1021a2bcd475",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        512
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "34e66b55-15f5-444d-ac4b-af2c571a9fab",
+      "name": "Merge Income + Bills1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 1,
+      "position": [
+        224,
+        368
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const items = $input.all();\nconst out = [];\nfor (const it of items) {\n    const d = it.json;\n    let eventTitle = '';\n    let colorId = ''; // Google Calendar color IDs\n    let eventDescription = ''; // This is the field for the description\n\n    if (d.HasLowBalance) {\n        eventTitle = '⚠️ Low Balance Warning';\n        colorId = '11'; // Red\n        eventDescription = 'Projected balance is below your threshold. Check your Financial Assistant app for details and actionable tips.';\n    } else if (d.IncomeCount > 0 && d.BillCount === 0) { // Only show green on income-only days\n        eventTitle = '✅ Income Received';\n        colorId = '10'; // Green\n        eventDescription = 'A projected income event is scheduled for today.';\n    } else if (d.BillCount >= 3) {\n        eventTitle = 'Bills Due';\n        colorId = '5'; // Yellow\n        eventDescription = `You have ${d.BillCount} bills scheduled for today. Check your Financial Assistant for a detailed list.`;\n    }\n\n    // Only create an event if a condition was met\n    if (eventTitle) {\n        it.json.eventTitle = eventTitle;\n        it.json.colorId = colorId;\n        it.json.eventDescription = eventDescription; // Add the new description to the output\n        out.push(it);\n    }\n}\nreturn out;"
+      },
+      "id": "8616f74b-5822-492d-9e0c-9eddd59e6f89",
+      "name": "Filter Calendar Days1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        960,
+        288
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const b = $json.Balance;\nconst date = $json.Date;\nconst t = parseFloat($env.LOW_BALANCE_THRESHOLD || 200);\nconst tx = $json.Transactions || 'No transactions for this day';\n\nconst suggestions = [\n    'Consider swapping one takeout meal for home cooking this week.',\n    'Review your subscriptions for any you no longer use.',\n    'Try delaying a non-essential purchase by one week.'\n];\nconst suggestion = suggestions[Math.floor(Math.random() * suggestions.length)];\n\nreturn [{\n    json: {\n        Alert: `⚠️ Low Balance Alert: €${Number(b).toFixed(2)} on ${date}`,\n        Date: date,\n        Message: `Your projected balance for ${date} is €${Number(b).toFixed(2)}, which is below your €${t} threshold.\\n\\nTransactions on this day: ${tx}\\n\\n💡 Tip: ${suggestion}`,\n        Subject: `Cash Flow Alert - Projected Balance €${Number(b).toFixed(2)} on ${date}`\n    }\n}];"
+      },
+      "id": "9ca15719-39cd-4004-891f-9579582d3791",
+      "name": "Format Alert Message1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        512
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1131634836,
+          "mode": "list",
+          "cachedResultName": "Cash Flow Summary Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1131634836"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Period",
+              "displayName": "Period",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Period Type",
+              "displayName": "Period Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Income (Expected)",
+              "displayName": "Income (Expected)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Fixed Expenses",
+              "displayName": "Fixed Expenses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Variable Expenses",
+              "displayName": "Variable Expenses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Net Cash Flow",
+              "displayName": "Net Cash Flow",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Dining Out",
+              "displayName": "Dining Out",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Shopping",
+              "displayName": "Shopping",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Travel",
+              "displayName": "Travel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Subscriptions",
+              "displayName": "Subscriptions",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Notes/Insights",
+              "displayName": "Notes/Insights",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Diff Vs Prev",
+              "displayName": "Diff Vs Prev",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Change Vs Prev",
+              "displayName": "Change Vs Prev",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Diff Vs Avg",
+              "displayName": "Diff Vs Avg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Change Vs Avg",
+              "displayName": "Change Vs Avg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Generated At",
+              "displayName": "Generated At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1840,
+        512
+      ],
+      "id": "b8e83483-aad0-4c0c-9b5b-a9e0246b15dd",
+      "name": "Log New Alert",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Fetch Income",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Recurring Bills",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch One-Offs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Current Balance",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Past Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "What-if Webhook": {
+      "main": [
+        [
+          {
+            "node": "Fetch Income",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Recurring Bills",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch One-Offs",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Current Balance",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Fetch Past Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Current Balance": {
+      "main": [
+        [
+          {
+            "node": "Compute Daily Projection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Past Transactions": {
+      "main": [
+        [
+          {
+            "node": "Calculate Daily Burn Rate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Daily Burn Rate": {
+      "main": [
+        [
+          {
+            "node": "Compute Daily Projection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Income": {
+      "main": [
+        [
+          {
+            "node": "Merge Income + Bills1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recurring Bills": {
+      "main": [
+        [
+          {
+            "node": "Merge Income + Bills1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Fetch One-Offs": {
+      "main": [
+        [
+          {
+            "node": "Merge All Transactions",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge All Transactions": {
+      "main": [
+        [
+          {
+            "node": "Compute Daily Projection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Daily Projection": {
+      "main": [
+        [
+          {
+            "node": "Summarize Projection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Filter Calendar Days1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check for Low Balance",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Projection": {
+      "main": [
+        [
+          {
+            "node": "Archive Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Low Balance": {
+      "main": [
+        [
+          {
+            "node": "Fetch Sent Alerts Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Sent Alerts Log": {
+      "main": [
+        [
+          {
+            "node": "Filter New Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter New Alerts": {
+      "main": [
+        [
+          {
+            "node": "Format Alert Message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Income + Bills1": {
+      "main": [
+        [
+          {
+            "node": "Merge All Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Calendar Days1": {
+      "main": [
+        [
+          {
+            "node": "Create Calendar Events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert Message1": {
+      "main": [
+        [
+          {
+            "node": "Log New Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log New Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

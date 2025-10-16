@@ -1,0 +1,370 @@
+{
+  "name": "Flight Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1088,
+        352
+      ],
+      "id": "325afe30-cc53-466a-aadb-6f6663526bfc",
+      "name": "When Called by Travel Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Standardized input processing for all sub-workflows\n// Use this code in the first Code node after the Execute Workflow Trigger\n\nconst input = $input.first().json;\nlet query = '';\nlet sessionId = null;\nlet userId = null;\n\n// Handle multiple input formats from the main Travel Agent\nif (input.query) {\n  query = input.query;\n} else if (input.chatInput) {\n  query = input.chatInput;\n} else if (input.input) {\n  query = input.input;\n} else if (input.text) {\n  query = input.text;\n} else if (input.message) {\n  query = input.message;\n} else if (typeof input === 'string') {\n  query = input;\n} else {\n  // If it's a complex object, try to extract the user's request\n  query = JSON.stringify(input);\n}\n\n// Extract metadata if available\nsessionId = input.sessionId || input.session_id || null;\nuserId = input.userId || input.user_id || null;\n\n// Set default dates for date-based workflows\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(tomorrow.getDate() + 1);\nconst nextWeek = new Date(today);\nnextWeek.setDate(nextWeek.getDate() + 7);\n\nreturn {\n  originalQuery: query,\n  processedQuery: query.toLowerCase(),\n  sessionId: sessionId,\n  userId: userId,\n  timestamp: new Date().toISOString(),\n  // Default dates (useful for accommodation/flight workflows)\n  defaultCheckIn: today.toISOString().split('T')[0],\n  defaultCheckOut: tomorrow.toISOString().split('T')[0],\n  defaultDeparture: nextWeek.toISOString().split('T')[0],\n  defaultReturn: new Date(nextWeek.getTime() + 7*24*60*60*1000).toISOString().split('T')[0],\n  // Input validation\n  hasQuery: query && query.trim().length > 0,\n  rawInput: input\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        352
+      ],
+      "id": "19f6f73c-1622-4bc8-af97-2cf3104f92bd",
+      "name": "Process Flight Query"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Extract flight search data from this request. Return valid JSON only.\n\nFormat:\n{\n  \"origin\": \"3-letter airport code or city\",\n  \"destination\": \"3-letter airport code or city\",\n  \"departure_date\": \"YYYY-MM-DD\",\n  \"return_date\": \"YYYY-MM-DD or null for one-way\",\n  \"adults\": number,\n  \"trip_type\": \"round-trip or one-way\",\n  \"class\": \"economy, business, or first\"\n}\n\nRules:\n- Convert city names to airport codes when possible (NYC->JFK, London->LHR, Paris->CDG)\n- Use next week for departure if not specified\n- Default: 1 adult, economy class\n- Set return_date to null for one-way trips\n\nRequest: {{ $json.originalQuery }}\nDefault departure: {{ $json.defaultDeparture }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -688,
+        352
+      ],
+      "id": "a0268d4e-c32d-4120-94eb-4463021a0b70",
+      "name": "Extract Flight Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-origin",
+              "leftValue": "={{ $json.message.content.origin }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "has-destination",
+              "leftValue": "={{ $json.message.content.destination }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -256,
+        352
+      ],
+      "id": "4f45957c-4ec4-4537-9bdb-635f2d6340bf",
+      "name": "Has Origin & Destination?"
+    },
+    {
+      "parameters": {
+        "url": "https://test.api.amadeus.com/v2/shopping/flight-offers",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "originLocationCode",
+              "value": "={{ $json.message.content.origin }}"
+            },
+            {
+              "name": "destinationLocationCode",
+              "value": "={{ $json.message.content.destination }}"
+            },
+            {
+              "name": "departureDate",
+              "value": "={{ $json.message.content.departure_date }}"
+            },
+            {
+              "name": "returnDate",
+              "value": "={{ $json.message.content.return_date }}"
+            },
+            {
+              "name": "adults",
+              "value": "={{ $json.message.content.adults }}"
+            },
+            {
+              "name": "travelClass",
+              "value": "={{ $json.message.content.class.toUpperCase() }}"
+            },
+            {
+              "name": "max",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        224
+      ],
+      "id": "31757f82-47e3-45b9-b9d8-57054e618258",
+      "name": "Search Flights (Amadeus)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Amadeus flight search results\nconst response = $input.first().json;\nconst searchData = $('Extract Flight Data').first().json.message.content;\n\nif (!response || !response.data || response.data.length === 0) {\n  return {\n    error: true,\n    message: `No flights found from ${searchData.origin} to ${searchData.destination} on ${searchData.departure_date}. Try different dates or nearby airports.`,\n    searchData: searchData\n  };\n}\n\n// Process flight offers\nconst flights = response.data.slice(0, 5).map((offer, index) => {\n  const outbound = offer.itineraries[0];\n  const segments = outbound.segments;\n  const firstSegment = segments[0];\n  const lastSegment = segments[segments.length - 1];\n  \n  // Calculate total duration\n  const duration = outbound.duration.replace('PT', '').replace('H', 'h ').replace('M', 'm');\n  \n  // Get airline info\n  const airline = firstSegment.carrierCode;\n  \n  // Get price\n  const price = `${offer.price.total} ${offer.price.currency}`;\n  \n  // Check for stops\n  const stops = segments.length - 1;\n  const stopInfo = stops === 0 ? 'Direct' : `${stops} stop${stops > 1 ? 's' : ''}`;\n  \n  return {\n    rank: index + 1,\n    airline: airline,\n    price: price,\n    departure: {\n      time: firstSegment.departure.at,\n      airport: firstSegment.departure.iataCode\n    },\n    arrival: {\n      time: lastSegment.arrival.at,\n      airport: lastSegment.arrival.iataCode\n    },\n    duration: duration,\n    stops: stopInfo,\n    aircraft: firstSegment.aircraft ? firstSegment.aircraft.code : 'N/A',\n    bookingToken: offer.id\n  };\n});\n\nreturn {\n  flights: flights,\n  searchData: searchData,\n  totalFound: response.data.length,\n  success: true\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        224
+      ],
+      "id": "f0d6ac7f-1fb8-4039-867d-479e5c7d57b9",
+      "name": "Process Flights"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Create a helpful flight recommendation response based on this search:\n\nRoute: {{ $json.searchData.origin }} → {{ $json.searchData.destination }}\nDeparture: {{ $json.searchData.departure_date }}\nReturn: {{ $json.searchData.return_date || 'One-way' }}\nPassengers: {{ $json.searchData.adults }} adult(s)\nClass: {{ $json.searchData.class }}\n\nFlights found: {{ $json.totalFound }}\n\nTop options:\n{{ JSON.stringify($json.flights, null, 2) }}\n\nFormat your response as:\n1. Brief intro with search criteria\n2. Top 3-5 flight recommendations with:\n   - Airline and price\n   - Departure/arrival times\n   - Duration and stops\n   - Why it's a good choice (best price, shortest, direct, etc.)\n3. Helpful tips about booking\n\nBe conversational and highlight the best value options."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        400,
+        224
+      ],
+      "id": "b7c7bc72-308a-409a-a278-eee44bd399af",
+      "name": "Format Flight Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle missing flight information error\nconst extractedData = $('Extract Flight Data').first().json;\nconst originalQuery = $('Process Flight Query').first().json.originalQuery;\n\nreturn {\n  error: true,\n  message: `I need both origin and destination to search for flights. You said: \"${originalQuery}\"\\n\\nPlease specify both locations, for example:\\n• \"Flight from New York to London\"\\n• \"Flights JFK to CDG next Friday\"\\n• \"Round trip Boston to Paris in July\"`,\n  suggestion: 'Please provide both departure and destination cities or airports.'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        464
+      ],
+      "id": "6b275ae7-d57a-426a-b5b2-18d43ebd8d70",
+      "name": "Handle Missing Info"
+    },
+    {
+      "parameters": {
+        "url": "https://skyscanner-skyscanner-flight-search-v1.p.rapidapi.com/apiservices/browsequotes/v1.0/US/USD/en-US/{{ $json.message.content.origin }}/{{ $json.message.content.destination }}/{{ $json.message.content.departure_date }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6992d654-4725-4940-8b6b-d68ca5f99e49",
+      "name": "Search Flights (Skyscanner)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process Skyscanner results as fallback\nconst response = $input.first().json;\nconst searchData = $('Extract Flight Data').first().json.message.content;\n\nif (!response || !response.Quotes || response.Quotes.length === 0) {\n  return {\n    error: true,\n    message: `No flights found from ${searchData.origin} to ${searchData.destination}. Please check airport codes and try different dates.`,\n    searchData: searchData\n  };\n}\n\n// Process Skyscanner quotes (simplified)\nconst flights = response.Quotes.slice(0, 5).map((quote, index) => {\n  const outbound = quote.OutboundLeg;\n  const carrier = response.Carriers.find(c => c.CarrierId === outbound.CarrierIds[0]);\n  \n  return {\n    rank: index + 1,\n    airline: carrier ? carrier.Name : 'Unknown Airline',\n    price: `$${quote.MinPrice}`,\n    departure: {\n      date: outbound.DepartureDate.split('T')[0],\n      airport: searchData.origin\n    },\n    arrival: {\n      airport: searchData.destination\n    },\n    direct: quote.Direct,\n    bookingUrl: `https://www.skyscanner.com/transport/flights/${searchData.origin}/${searchData.destination}`\n  };\n});\n\nreturn {\n  flights: flights,\n  searchData: searchData,\n  totalFound: response.Quotes.length,\n  success: true,\n  source: 'skyscanner'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "dbd7a182-b605-4b38-91f8-aa56f86441e4",
+      "name": "Process Skyscanner Flights"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Create a flight search response based on this data:\n\nRoute: {{ $json.searchData.origin }} → {{ $json.searchData.destination }}\nDeparture: {{ $json.searchData.departure_date }}\nPassengers: {{ $json.searchData.adults }} adult(s)\n\nFlight options found:\n{{ JSON.stringify($json.flights, null, 2) }}\n\nFormat as:\n1. Brief intro with route and date\n2. Top flight options with prices and airlines\n3. Note that these are approximate prices\n4. Suggest booking through airline websites or travel sites for best deals\n\nBe helpful and conversational."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        400,
+        0
+      ],
+      "id": "cc92f4a6-30f0-49ca-81b9-9f384c0e548b",
+      "name": "Format Skyscanner Response"
+    }
+  ],
+  "connections": {
+    "When Called by Travel Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Flight Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Flight Query": {
+      "main": [
+        [
+          {
+            "node": "Extract Flight Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Flight Data": {
+      "main": [
+        [
+          {
+            "node": "Has Origin & Destination?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Origin & Destination?": {
+      "main": [
+        [
+          {
+            "node": "Search Flights (Amadeus)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Flights (Skyscanner)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Missing Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Flights (Amadeus)": {
+      "main": [
+        [
+          {
+            "node": "Process Flights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Flights": {
+      "main": [
+        [
+          {
+            "node": "Format Flight Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Flights (Skyscanner)": {
+      "main": [
+        [
+          {
+            "node": "Process Skyscanner Flights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Skyscanner Flights": {
+      "main": [
+        [
+          {
+            "node": "Format Skyscanner Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

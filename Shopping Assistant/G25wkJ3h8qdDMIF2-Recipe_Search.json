@@ -1,0 +1,306 @@
+{
+  "name": "Recipe Search",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -944,
+        224
+      ],
+      "id": "b8b7a8d1-095b-4b89-82bf-154b07556d5b",
+      "name": "When Called by Main Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst userMessage = input.chatInput || input.query || input.input || '';\n\nconst extractRecipeDetails = (message) => {\n  try {\n    const text = message.toLowerCase();\n    \n    const recipePatterns = [\n      /(\\d+)\\s*(recipe|recipes)/i,\n      /\\b(one|two|three|four|five|six|seven|eight|nine|ten)\\s*(recipe|recipes)/i\n    ];\n    \n    let recipeCount = 3;\n    const numberMap = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10 };\n    \n    for (const pattern of recipePatterns) {\n      const match = text.match(pattern);\n      if (match) {\n        const value = match[1].toLowerCase();\n        recipeCount = numberMap[value] || parseInt(value) || 3;\n        break;\n      }\n    }\n    \n    const servingPatterns = [\n      /(\\d+)\\s*(people|person|serving|guest)/i,\n      /for\\s+(\\d+)/i,\n      /feeds?\\s+(\\d+)/i\n    ];\n    \n    let servings = 4;\n    for (const pattern of servingPatterns) {\n      const match = text.match(pattern);\n      if (match) {\n        servings = parseInt(match[1]) || 4;\n        break;\n      }\n    }\n    \n    const cuisineTypes = {\n      italian: /\\b(italian|pasta|pizza|mediterranean)\\b/i,\n      mexican: /\\b(mexican|taco|burrito|tex.?mex|salsa)\\b/i,\n      asian: /\\b(asian|chinese|japanese|thai|korean|stir.?fry)\\b/i,\n      indian: /\\b(indian|curry|tikka|masala|spice)\\b/i,\n      american: /\\b(american|bbq|burger|southern)\\b/i,\n      french: /\\b(french|classic|elegant)\\b/i,\n      greek: /\\b(greek|tzatziki|feta|olive)\\b/i,\n      spanish: /\\b(spanish|paella|tapas)\\b/i\n    };\n    \n    const cuisines = [];\n    for (const [cuisine, pattern] of Object.entries(cuisineTypes)) {\n      if (pattern.test(text)) cuisines.push(cuisine);\n    }\n    \n    const commonIngredients = {\n      proteins: ['chicken', 'beef', 'pork', 'fish', 'salmon', 'turkey', 'tofu', 'eggs', 'shrimp', 'lamb'],\n      vegetables: ['broccoli', 'spinach', 'mushrooms', 'tomatoes', 'onions', 'peppers', 'carrots', 'zucchini', 'eggplant'],\n      grains: ['rice', 'pasta', 'quinoa', 'bread', 'noodles', 'barley', 'couscous'],\n      dairy: ['cheese', 'milk', 'yogurt', 'cream', 'butter'],\n      herbs: ['basil', 'oregano', 'thyme', 'rosemary', 'cilantro', 'parsley']\n    };\n    \n    const ingredients = [];\n    for (const [category, items] of Object.entries(commonIngredients)) {\n      for (const item of items) {\n        if (text.includes(item)) ingredients.push(item);\n      }\n    }\n    \n    const dietaryOptions = {\n      vegetarian: /\\b(vegetarian|veggie)\\b/i,\n      vegan: /\\b(vegan|plant.?based)\\b/i,\n      'gluten-free': /\\b(gluten.?free|gf|celiac)\\b/i,\n      'dairy-free': /\\b(dairy.?free|lactose.?free)\\b/i,\n      healthy: /\\b(healthy|nutritious|clean|wholesome)\\b/i,\n      'low-carb': /\\b(low.?carb|keto|atkins)\\b/i,\n      'high-protein': /\\b(protein|muscle|fitness)\\b/i,\n      quick: /\\b(quick|fast|easy|simple|rapid)\\b/i,\n      comfort: /\\b(comfort|cozy|hearty)\\b/i,\n      spicy: /\\b(spicy|hot|kick|heat)\\b/i\n    };\n    \n    const dietary = [];\n    for (const [pref, pattern] of Object.entries(dietaryOptions)) {\n      if (pattern.test(text)) dietary.push(pref);\n    }\n    \n    const cookingMethods = {\n      baking: /\\b(bake|baked|baking|oven)\\b/i,\n      grilling: /\\b(grill|grilled|barbecue|bbq)\\b/i,\n      'stir-fry': /\\b(stir.?fry|wok)\\b/i,\n      'slow-cook': /\\b(slow.?cook|crockpot|crock.?pot)\\b/i,\n      'air-fry': /\\b(air.?fry|air.?fryer)\\b/i,\n      stovetop: /\\b(stovetop|pan|skillet|sauté)\\b/i,\n      roasting: /\\b(roast|roasted|roasting)\\b/i,\n      steaming: /\\b(steam|steamed|steaming)\\b/i\n    };\n    \n    const methods = [];\n    for (const [method, pattern] of Object.entries(cookingMethods)) {\n      if (pattern.test(text)) methods.push(method);\n    }\n    \n    const timeConstraints = {\n      'under-15-min': /\\b(15.?min|quarter.?hour|very.?quick)\\b/i,\n      'under-30-min': /\\b(30.?min|half.?hour|quick)\\b/i,\n      'under-1-hour': /\\b(1.?hour|hour)\\b/i,\n      'make-ahead': /\\b(make.?ahead|prep.?ahead|advance)\\b/i\n    };\n    \n    const timePrefs = [];\n    for (const [time, pattern] of Object.entries(timeConstraints)) {\n      if (pattern.test(text)) timePrefs.push(time);\n    }\n    \n    return {\n      recipeCount: Math.min(Math.max(recipeCount, 1), 10),\n      servings: Math.min(Math.max(servings, 1), 12),\n      cuisines,\n      ingredients,\n      dietary,\n      cookingMethods: methods,\n      timeConstraints: timePrefs,\n      originalMessage: message,\n      error: null\n    };\n  } catch (error) {\n    return {\n      recipeCount: 3,\n      servings: 4,\n      cuisines: [],\n      ingredients: [],\n      dietary: [],\n      cookingMethods: [],\n      timeConstraints: [],\n      originalMessage: message,\n      error: error.message\n    };\n  }\n};\n\nconst calculateComplexity = (details, message) => {\n  let score = 0;\n  \n  if (message.length > 80) score += 2;\n  else if (message.length > 40) score += 1;\n  \n  score += details.dietary.length;\n  score += details.cuisines.length;\n  score += details.ingredients.length;\n  score += details.cookingMethods.length;\n  \n  if (details.recipeCount > 5) score += 1;\n  if (details.servings > 8) score += 1;\n  \n  return score >= 4 ? 'detailed' : score >= 2 ? 'moderate' : 'simple';\n};\n\nconst details = extractRecipeDetails(userMessage);\nconst complexity = calculateComplexity(details, userMessage);\n\nreturn {\n  recipeCount: details.recipeCount,\n  servings: details.servings,\n  cuisines: details.cuisines,\n  ingredients: details.ingredients,\n  dietaryPreferences: details.dietary,\n  cookingMethods: details.cookingMethods,\n  timeConstraints: details.timeConstraints,\n  originalMessage: details.originalMessage,\n  sessionId: input.sessionId,\n  timestamp: new Date().toISOString(),\n  complexity: complexity,\n  error: details.error\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        224
+      ],
+      "id": "2ff8e6bd-cf66-406c-a354-5c460a075be1",
+      "name": "Enhanced Recipe Detail Extraction"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -544,
+        224
+      ],
+      "id": "f5d36fd7-d407-4758-8ba7-9895de8b56ab",
+      "name": "Check for Errors"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "is-complex",
+              "leftValue": "={{ $json.complexity }}",
+              "rightValue": "detailed",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -288,
+        320
+      ],
+      "id": "08212cca-7381-4c8e-a6e9-cf6f0be36f76",
+      "name": "Is Complex Request?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const details = $input.first().json;\n\nreturn {\n  output: `I apologize, but I encountered an issue processing your recipe request. Let me help you with some recipe suggestions instead.\\n\\nHow about I find ${details.recipeCount} delicious recipes for ${details.servings} people? Just let me know what ingredients or cuisine you have in mind!`,\n  success: false,\n  error: details.error,\n  data: details,\n  timestamp: new Date().toISOString(),\n  source: 'recipe_search_error_handler'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2d179ff7-293c-4b7b-80c3-2dd6d45838c5",
+      "name": "Error Handler"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a helpful recipe assistant. The user asked: \"{{ $json.originalMessage }}\"\n\nFind {{ $json.recipeCount }} recipes for {{ $json.servings }} people with these preferences:\n- Ingredients: {{ $json.ingredients.join(', ') || 'Chef\\'s choice' }}\n- Cuisine: {{ $json.cuisines.join(', ') || 'Any cuisine' }}  \n- Dietary: {{ $json.dietaryPreferences.join(', ') || 'No restrictions' }}\n- Method: {{ $json.cookingMethods.join(', ') || 'Any cooking method' }}\n\nFor each recipe, provide:\n• **Recipe name** and brief description (1-2 sentences)\n• **Time:** Prep + cook time, difficulty level\n• **Key ingredients:** 5-8 main items only\n• **Quick steps:** 3-5 simple bullet points\n• **Tip:** One practical cooking tip\n\nKeep it concise and practical. Use a friendly tone but avoid lengthy explanations."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -16,
+        224
+      ],
+      "id": "afaf96e6-f2ee-4758-b853-f8213f03082f",
+      "name": "Advanced Recipe Generator"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a helpful recipe assistant. The user asked: \"{{ $json.originalMessage }}\"\n\nFind {{ $json.recipeCount }} quick recipes for {{ $json.servings }} people.\nIngredients: {{ $json.ingredients.join(', ') || 'Flexible ingredients' }}\nDietary: {{ $json.dietaryPreferences.join(', ') || 'None specified' }}\n\nFor each recipe:\n- **Recipe name & description** (1 sentence)\n- **Time:** Prep + cook, difficulty\n- **Ingredients:** 4-6 key items with amounts\n- **Steps:** 3-4 simple instructions\n- **Tip:** Quick cooking tip\n\nKeep it friendly, concise, and easy to follow."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -16,
+        432
+      ],
+      "id": "554e9fa0-6688-423f-b335-c2e7876242c5",
+      "name": "Standard Recipe Generator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiResponse = $input.first().json;\nconst recipeDetails = $('Enhanced Recipe Detail Extraction').first().json;\n\n// Fix: Get the response from the correct field\nlet response = aiResponse.output || \n               aiResponse.text || \n               aiResponse.content ||\n               aiResponse.message ||\n               (aiResponse.choices && aiResponse.choices[0] && aiResponse.choices[0].message && aiResponse.choices[0].message.content) ||\n               (typeof aiResponse === 'string' ? aiResponse : null);\n\n// Debug: Log what we're getting from the AI\nconsole.log('AI Response Keys:', Object.keys(aiResponse));\nconsole.log('AI Response Type:', typeof aiResponse);\nconsole.log('AI Response:', JSON.stringify(aiResponse).substring(0, 200) + '...');\n\n// If we still don't have a response, provide a fallback\nif (!response) {\n  response = `I'd be happy to help you find some delicious recipes! Based on your request, I can suggest ${recipeDetails.recipeCount} recipes for ${recipeDetails.servings} people. Could you tell me a bit more about what ingredients or cuisine type you're in the mood for?`;\n  console.warn('No AI response found, using fallback');\n} else {\n  console.log('Found AI response, length:', response.length);\n}\n\n// Add context only if we have the actual AI response\nconst contextItems = [];\nif (response.length > 100 && recipeDetails.ingredients.length > 0) {\n  contextItems.push(`featuring ${recipeDetails.ingredients.join(', ')}`);\n}\nif (response.length > 100 && recipeDetails.cuisines.length > 0) {\n  contextItems.push(`with ${recipeDetails.cuisines.join(' and ')} flavors`);\n}\nif (response.length > 100 && recipeDetails.dietaryPreferences.length > 0) {\n  contextItems.push(`perfect for ${recipeDetails.dietaryPreferences.join(' and ')} diets`);\n}\nif (response.length > 100 && recipeDetails.cookingMethods.length > 0) {\n  contextItems.push(`using ${recipeDetails.cookingMethods.join(' and ')} techniques`);\n}\n\nif (contextItems.length > 0 && response.length > 100) {\n  response += `\\n\\n✨ These recipes are ${contextItems.join(', ')} - I hope you enjoy cooking them!`;\n}\n\nreturn {\n  output: response,\n  success: true,\n  data: {\n    recipeCount: recipeDetails.recipeCount,\n    servings: recipeDetails.servings,\n    ingredients: recipeDetails.ingredients,\n    cuisines: recipeDetails.cuisines,\n    dietaryPreferences: recipeDetails.dietaryPreferences,\n    cookingMethods: recipeDetails.cookingMethods,\n    timeConstraints: recipeDetails.timeConstraints,\n    complexity: recipeDetails.complexity\n  },\n  timestamp: new Date().toISOString(),\n  source: 'enhanced_recipe_search_assistant',\n  debug: {\n    aiResponseKeys: Object.keys(aiResponse),\n    responseLength: response ? response.length : 0,\n    foundResponse: !!response\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        224
+      ],
+      "id": "a6ef2f2f-beda-4d0d-bd1a-40a97a9809e0",
+      "name": "Natural Response Formatter"
+    }
+  ],
+  "connections": {
+    "When Called by Main Agent": {
+      "main": [
+        [
+          {
+            "node": "Enhanced Recipe Detail Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enhanced Recipe Detail Extraction": {
+      "main": [
+        [
+          {
+            "node": "Check for Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Errors": {
+      "main": [
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Complex Request?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Complex Request?": {
+      "main": [
+        [
+          {
+            "node": "Advanced Recipe Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Standard Recipe Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Natural Response Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Advanced Recipe Generator": {
+      "main": [
+        [
+          {
+            "node": "Natural Response Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Standard Recipe Generator": {
+      "main": [
+        [
+          {
+            "node": "Natural Response Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {
+    "Enhanced Recipe Detail Extraction": [
+      {
+        "json": {
+          "recipeCount": 3,
+          "servings": 4,
+          "cuisines": [
+            "italian"
+          ],
+          "ingredients": [
+            "chicken",
+            "mushrooms",
+            "pasta"
+          ],
+          "dietaryPreferences": [
+            "healthy"
+          ],
+          "cookingMethods": [
+            "stovetop"
+          ],
+          "timeConstraints": [
+            "under-30-min"
+          ],
+          "originalMessage": "Find 3 healthy Italian recipes with chicken, mushrooms and pasta for 4 people that can be made on stovetop in under 30 minutes",
+          "sessionId": "test-session-12345",
+          "timestamp": "2025-06-02T15:30:45.123Z",
+          "complexity": "detailed",
+          "error": null
+        }
+      }
+    ]
+  },
+  "triggerCount": 0,
+  "meta": null
+}

@@ -1,0 +1,26 @@
+{
+  "name": "Youtube Video Summary",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        48,
+        64
+      ],
+      "id": "eb60fc10-30e7-4719-840b-c2257f377634",
+      "name": "When clicking ‘Test workflow’",
+      "notesInFlow": true,
+      "notes": "Set Node: You paste a YouTube link\n\nCode Node: Extracts the video ID\n\nYouTube API Node: Fetches metadata using your credentials\n\nOpenAI Node: Summarizes title + description\n\nFinal Node: Shows the summary output"
+    }
+  ],
+  "connections": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

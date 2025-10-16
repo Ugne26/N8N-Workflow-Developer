@@ -1,0 +1,472 @@
+{
+  "name": "Trip Adviser",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1552,
+        320
+      ],
+      "id": "12a0ed57-746f-47ea-ad1c-a478a91b84c7",
+      "name": "When Called by Travel Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Standardized input processing for all sub-workflows\n// Use this code in the first Code node after the Execute Workflow Trigger\n\nconst input = $input.first().json;\nlet query = '';\nlet sessionId = null;\nlet userId = null;\n\n// Handle multiple input formats from the main Travel Agent\nif (input.query) {\n  query = input.query;\n} else if (input.chatInput) {\n  query = input.chatInput;\n} else if (input.input) {\n  query = input.input;\n} else if (input.text) {\n  query = input.text;\n} else if (input.message) {\n  query = input.message;\n} else if (typeof input === 'string') {\n  query = input;\n} else {\n  // If it's a complex object, try to extract the user's request\n  query = JSON.stringify(input);\n}\n\n// Extract metadata if available\nsessionId = input.sessionId || input.session_id || null;\nuserId = input.userId || input.user_id || null;\n\n// Set default dates for date-based workflows\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(tomorrow.getDate() + 1);\nconst nextWeek = new Date(today);\nnextWeek.setDate(nextWeek.getDate() + 7);\n\nreturn {\n  originalQuery: query,\n  processedQuery: query.toLowerCase(),\n  sessionId: sessionId,\n  userId: userId,\n  timestamp: new Date().toISOString(),\n  // Default dates (useful for accommodation/flight workflows)\n  defaultCheckIn: today.toISOString().split('T')[0],\n  defaultCheckOut: tomorrow.toISOString().split('T')[0],\n  defaultDeparture: nextWeek.toISOString().split('T')[0],\n  defaultReturn: new Date(nextWeek.getTime() + 7*24*60*60*1000).toISOString().split('T')[0],\n  // Input validation\n  hasQuery: query && query.trim().length > 0,\n  rawInput: input\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1360,
+        320
+      ],
+      "id": "2a46420a-69b5-4fcf-9b88-2d625b27f63c",
+      "name": "Process Attractions Query"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Extract attraction search data from this request. Return valid JSON only.\n\nFormat:\n{\n  \"destination\": \"city name only\",\n  \"interests\": [\"category1\", \"category2\"],\n  \"duration\": \"half-day, full-day, or multi-day\",\n  \"budget\": \"budget, mid-range, or luxury\"\n}\n\nInterest categories: museums, restaurants, attractions, tours, outdoor, nightlife, shopping, culture, history, nature, adventure, family, romantic\n\nRules:\n- Extract only city name for destination\n- Choose 1-3 most relevant interest categories\n- Default duration: full-day\n- Default budget: mid-range\n\nRequest: {{ $json.originalQuery }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1152,
+        320
+      ],
+      "id": "dd89b4be-ba6d-4598-821f-797898eb0728",
+      "name": "Extract Attraction Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-destination",
+              "leftValue": "={{ $json.message.content.destination }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -752,
+        320
+      ],
+      "id": "4a64f7cb-2d7d-44fd-b0c0-dcbee80e550f",
+      "name": "Has Destination?"
+    },
+    {
+      "parameters": {
+        "url": "https://tripadvisor1.p.rapidapi.com/locations/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.message.content.destination }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "offset",
+              "value": "0"
+            },
+            {
+              "name": "units",
+              "value": "km"
+            },
+            {
+              "name": "language",
+              "value": "en"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        224
+      ],
+      "id": "2af5099e-24c1-4bd0-8185-166a211fb95f",
+      "name": "Search Location"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process location search results\nconst response = $input.first().json;\nconst searchData = $('Extract Attraction Data').first().json.message.content;\n\nif (!response || !response.data || response.data.length === 0) {\n  return {\n    error: true,\n    message: `Sorry, I couldn't find location data for \"${searchData.destination}\". Please try a different city name.`,\n    destination: searchData.destination\n  };\n}\n\n// Get the best location match\nconst location = response.data[0];\n\nreturn {\n  locationId: location.location_id,\n  locationName: location.result_object ? location.result_object.name : location.name,\n  latitude: location.result_object ? location.result_object.latitude : null,\n  longitude: location.result_object ? location.result_object.longitude : null,\n  searchData: searchData,\n  success: true\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -352,
+        224
+      ],
+      "id": "ddc12dc9-930a-4898-be00-965f8f6542ec",
+      "name": "Process Location"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "location-found",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        224
+      ],
+      "id": "c1c189a4-0340-4ec9-a5cd-bf53c382b803",
+      "name": "Location Found?"
+    },
+    {
+      "parameters": {
+        "url": "https://tripadvisor1.p.rapidapi.com/attractions/list",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "location_id",
+              "value": "={{ $json.locationId }}"
+            },
+            {
+              "name": "currency",
+              "value": "USD"
+            },
+            {
+              "name": "lang",
+              "value": "en_US"
+            },
+            {
+              "name": "limit",
+              "value": "15"
+            },
+            {
+              "name": "offset",
+              "value": "0"
+            },
+            {
+              "name": "sort",
+              "value": "recommended"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        64
+      ],
+      "id": "7fbe1ff4-e296-44d8-949e-fa622981d57d",
+      "name": "Get Attractions"
+    },
+    {
+      "parameters": {
+        "url": "https://tripadvisor1.p.rapidapi.com/restaurants/list",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "location_id",
+              "value": "={{ $json.locationId }}"
+            },
+            {
+              "name": "currency",
+              "value": "USD"
+            },
+            {
+              "name": "lang",
+              "value": "en_US"
+            },
+            {
+              "name": "limit",
+              "value": "10"
+            },
+            {
+              "name": "offset",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        48,
+        256
+      ],
+      "id": "a7b31657-6abc-4bbd-9f90-badfbbc56249",
+      "name": "Get Restaurants"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process attractions and restaurants data\nconst attractionsResponse = $('Get Attractions').first().json;\nconst restaurantsResponse = $('Get Restaurants').first().json;\nconst locationData = $('Process Location').first().json;\n\n// Process attractions\nconst attractions = [];\nif (attractionsResponse && attractionsResponse.data && attractionsResponse.data.length > 0) {\n  attractionsResponse.data.slice(0, 8).forEach((attraction, index) => {\n    if (attraction.name && attraction.rating) {\n      attractions.push({\n        rank: index + 1,\n        name: attraction.name,\n        type: 'Attraction',\n        rating: attraction.rating,\n        reviewCount: attraction.num_reviews || 0,\n        description: attraction.description || attraction.snippet || 'Popular attraction',\n        priceLevel: attraction.price_level || 'Varies',\n        category: attraction.category ? attraction.category.name : 'Attraction',\n        website: attraction.website || '',\n        address: attraction.address_obj ? attraction.address_obj.address_string : ''\n      });\n    }\n  });\n}\n\n// Process restaurants\nconst restaurants = [];\nif (restaurantsResponse && restaurantsResponse.data && restaurantsResponse.data.length > 0) {\n  restaurantsResponse.data.slice(0, 5).forEach((restaurant, index) => {\n    if (restaurant.name && restaurant.rating) {\n      restaurants.push({\n        rank: index + 1,\n        name: restaurant.name,\n        type: 'Restaurant',\n        rating: restaurant.rating,\n        reviewCount: restaurant.num_reviews || 0,\n        cuisine: restaurant.cuisine ? restaurant.cuisine.map(c => c.name).join(', ') : 'Various',\n        priceLevel: restaurant.price_level || 'Mid-range',\n        description: restaurant.description || 'Popular restaurant',\n        address: restaurant.address_obj ? restaurant.address_obj.address_string : ''\n      });\n    }\n  });\n}\n\nif (attractions.length === 0 && restaurants.length === 0) {\n  return {\n    error: true,\n    message: `Sorry, I couldn't find attractions or restaurants for ${locationData.locationName}. The location might not have enough data in TripAdvisor.`,\n    searchData: locationData.searchData\n  };\n}\n\nreturn {\n  attractions: attractions,\n  restaurants: restaurants,\n  location: locationData.locationName,\n  searchData: locationData.searchData,\n  totalAttractions: attractions.length,\n  totalRestaurants: restaurants.length,\n  success: true\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        224
+      ],
+      "id": "4d2e93de-03af-4258-ae6b-08e983098a08",
+      "name": "Process Suggestions"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Create travel recommendations based on this TripAdvisor data:\n\nDestination: {{ $json.location }}\nInterests: {{ $json.searchData.interests.join(', ') }}\nDuration: {{ $json.searchData.duration }}\nBudget: {{ $json.searchData.budget }}\n\nAttractions ({{ $json.totalAttractions }} found):\n{{ JSON.stringify($json.attractions, null, 2) }}\n\nRestaurants ({{ $json.totalRestaurants }} found):\n{{ JSON.stringify($json.restaurants, null, 2) }}\n\nFormat your response as:\n1. Brief intro about the destination\n2. Top attractions section:\n   - 3-5 must-see attractions with ratings and why they're special\n3. Dining recommendations section:\n   - 3-4 restaurants with cuisine types and what makes them noteworthy\n4. Practical tips for visiting\n\nBe enthusiastic and helpful, highlighting the best-rated options that match their interests."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        448,
+        224
+      ],
+      "id": "05eeb5a5-c789-4583-bdbb-9514538b8633",
+      "name": "Format Suggestions"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle no destination error\nconst originalQuery = $('Process Attractions Query').first().json.originalQuery;\n\nreturn {\n  error: true,\n  message: `I need a destination to find attractions and activities. You said: \"${originalQuery}\"\\n\\nPlease specify a city or location, for example:\\n• \"Things to do in Paris\"\\n• \"Attractions in Tokyo\"\\n• \"Best restaurants in Rome\"\\n• \"Activities in New York\"`,\n  suggestion: 'Please provide a specific city or destination for attraction recommendations.'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        416
+      ],
+      "id": "ba4a1a23-1edc-456f-b506-1c9719a26b94",
+      "name": "Handle No Destination"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle location not found error\nconst locationError = $input.first().json;\n\nreturn {\n  error: true,\n  message: locationError.message,\n  suggestion: `Try searching for a major city or popular tourist destination near ${locationError.destination}.`\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        480
+      ],
+      "id": "8a5456fd-0aa5-4b7e-8fed-4537bc7f9776",
+      "name": "Handle Location Error"
+    }
+  ],
+  "connections": {
+    "When Called by Travel Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Attractions Query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Attractions Query": {
+      "main": [
+        [
+          {
+            "node": "Extract Attraction Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Attraction Data": {
+      "main": [
+        [
+          {
+            "node": "Has Destination?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Destination?": {
+      "main": [
+        [
+          {
+            "node": "Search Location",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle No Destination",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Location": {
+      "main": [
+        [
+          {
+            "node": "Process Location",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Location": {
+      "main": [
+        [
+          {
+            "node": "Location Found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Location Found?": {
+      "main": [
+        [
+          {
+            "node": "Get Attractions",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Restaurants",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Location Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Attractions": {
+      "main": [
+        [
+          {
+            "node": "Process Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Restaurants": {
+      "main": [
+        [
+          {
+            "node": "Process Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Suggestions": {
+      "main": [
+        [
+          {
+            "node": "Format Suggestions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {},
+  "triggerCount": 0,
+  "meta": null
+}

@@ -1,0 +1,693 @@
+{
+  "name": "Accommodation Finder",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -2032,
+        144
+      ],
+      "id": "e8743465-25f3-4429-bb99-68da82535809",
+      "name": "When Called by Travel Agent"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        -176
+      ],
+      "id": "cf0e4817-145c-42fd-ac43-aa614634c232",
+      "name": "Rate Limit Delay",
+      "webhookId": "0c40383e-69f0-4b77-a548-41baaac267a0"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle location not found error\nconst locationError = $input.first().json;\n\nreturn {\n  error: true,\n  message: locationError.message,\n  suggestion: `Try searching for a major city near ${locationError.destination} or check the spelling.`\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -368,
+        144
+      ],
+      "id": "666795b1-0f07-4b86-b07a-b5f6b7ecc243",
+      "name": "Handle Location Error"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Standardized input processing\nconst input = $input.first().json;\nlet query = '';\nlet sessionId = null;\n\nif (input.query) {\n  query = input.query;\n} else if (input.chatInput) {\n  query = input.chatInput;\n} else if (input.input) {\n  query = input.input;\n} else if (typeof input === 'string') {\n  query = input;\n} else {\n  query = JSON.stringify(input);\n}\n\nsessionId = input.sessionId || null;\n\nconst today = new Date();\nconst tomorrow = new Date(today);\ntomorrow.setDate(tomorrow.getDate() + 1);\n\nreturn {\n  originalQuery: query,\n  sessionId: sessionId,\n  defaultCheckIn: today.toISOString().split('T')[0],\n  defaultCheckOut: tomorrow.toISOString().split('T')[0],\n  hasQuery: query && query.trim().length > 0\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1840,
+        144
+      ],
+      "id": "adf4a391-8532-4587-9769-f5aa8e08852a",
+      "name": "Process Input"
+    },
+    {
+      "parameters": {
+        "url": "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchHotels",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "dest_id",
+              "value": "={{ $json.locationId }}"
+            },
+            {
+              "name": "search_type",
+              "value": "CITY"
+            },
+            {
+              "name": "checkin_date",
+              "value": "={{ $json.searchData.check_in }}"
+            },
+            {
+              "name": "checkout_date",
+              "value": "={{ $json.searchData.check_out }}"
+            },
+            {
+              "name": "adults",
+              "value": "={{ $json.searchData.adults }}"
+            },
+            {
+              "name": "room_qty",
+              "value": "={{ $json.searchData.rooms }}"
+            },
+            {
+              "name": "page_number",
+              "value": "1"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "temperature_unit",
+              "value": "c"
+            },
+            {
+              "name": "languagecode",
+              "value": "en-us"
+            },
+            {
+              "name": "currency_code",
+              "value": "USD"
+            },
+            {
+              "name": "location",
+              "value": "US"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-key",
+              "value": "13ace435f8mshd72bd4fc5c0162bp143c20jsnd4c34a42d279"
+            },
+            {
+              "name": "x-rapidapi-host",
+              "value": "booking-com15.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        -352
+      ],
+      "id": "f4ef8012-a7d4-41c9-a5ea-3af0b8c0a946",
+      "name": "Search Hotels (USD)",
+      "notesInFlow": true,
+      "continueOnFail": true,
+      "notes": "NEEDS FIXING"
+    },
+    {
+      "parameters": {
+        "url": "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchHotels",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "dest_id",
+              "value": "={{ $json.locationId }}"
+            },
+            {
+              "name": "search_type",
+              "value": "CITY"
+            },
+            {
+              "name": "checkin_date",
+              "value": "={{ $json.searchData.check_in }}"
+            },
+            {
+              "name": "checkout_date",
+              "value": "={{ $json.searchData.check_out }}"
+            },
+            {
+              "name": "adults",
+              "value": "={{ $json.searchData.adults }}"
+            },
+            {
+              "name": "room_qty",
+              "value": "={{ $json.searchData.rooms }}"
+            },
+            {
+              "name": "page_number",
+              "value": "1"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "temperature_unit",
+              "value": "c"
+            },
+            {
+              "name": "languagecode",
+              "value": "en-us"
+            },
+            {
+              "name": "currency_code",
+              "value": "EUR"
+            },
+            {
+              "name": "location",
+              "value": "US"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-key",
+              "value": "13ace435f8mshd72bd4fc5c0162bp143c20jsnd4c34a42d279"
+            },
+            {
+              "name": "x-rapidapi-host",
+              "value": "booking-com15.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        -176
+      ],
+      "id": "8982affc-dc31-47c3-86aa-f6b20acbee20",
+      "name": "Search Hotels (EUR)",
+      "notesInFlow": true,
+      "continueOnFail": true,
+      "notes": "NEEDS FIXING"
+    },
+    {
+      "parameters": {
+        "url": "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchHotels",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "dest_id",
+              "value": "={{ $json.locationId }}"
+            },
+            {
+              "name": "search_type",
+              "value": "CITY"
+            },
+            {
+              "name": "checkin_date",
+              "value": "={{ $json.searchData.check_in }}"
+            },
+            {
+              "name": "checkout_date",
+              "value": "={{ $json.searchData.check_out }}"
+            },
+            {
+              "name": "adults",
+              "value": "={{ $json.searchData.adults }}"
+            },
+            {
+              "name": "room_qty",
+              "value": "={{ $json.searchData.rooms }}"
+            },
+            {
+              "name": "page_number",
+              "value": "1"
+            },
+            {
+              "name": "units",
+              "value": "metric"
+            },
+            {
+              "name": "temperature_unit",
+              "value": "c"
+            },
+            {
+              "name": "languagecode",
+              "value": "en-us"
+            },
+            {
+              "name": "currency_code",
+              "value": "GBP"
+            },
+            {
+              "name": "location",
+              "value": "US"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-key",
+              "value": "13ace435f8mshd72bd4fc5c0162bp143c20jsnd4c34a42d279"
+            },
+            {
+              "name": "x-rapidapi-host",
+              "value": "booking-com15.p.rapidapi.com"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -112,
+        16
+      ],
+      "id": "8446e8dc-0174-4dbc-beb8-fa657a480312",
+      "name": "Search Hotels (GBP)",
+      "notesInFlow": true,
+      "continueOnFail": true,
+      "notes": "NEEDS FIXING"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge results from all three currency searches with error handling\nlet usdResults = null;\nlet eurResults = null;\nlet gbpResults = null;\n\ntry {\n  usdResults = $('Search Hotels (USD)').first()?.json || null;\n} catch (e) {\n  console.log('USD search failed:', e.message);\n}\n\ntry {\n  eurResults = $('Search Hotels (EUR)').first()?.json || null;\n} catch (e) {\n  console.log('EUR search failed:', e.message);\n}\n\ntry {\n  gbpResults = $('Search Hotels (GBP)').first()?.json || null;\n} catch (e) {\n  console.log('GBP search failed:', e.message);\n}\n\nconst locationData = $('Process Location1').first().json;\n\n// Check if any results exist - updated for new API response structure\nif ((!usdResults?.data?.hotels?.length) && (!eurResults?.data?.hotels?.length) && (!gbpResults?.data?.hotels?.length)) {\n  return {\n    error: true,\n    message: `No hotels found in ${locationData.locationName} for the specified dates.`,\n    suggestion: 'Try different dates or expand your search to nearby areas.'\n  };\n}\n\n// Helper function to process hotel data with error handling - updated for new API structure\nfunction processHotels(results, currency) {\n  if (!results?.data?.hotels?.length) return [];\n  \n  return results.data.hotels.slice(0, 10).map(hotel => {\n    try {\n      // Updated field mapping for new API response structure\n      const price = hotel.min_total_price || hotel.price_breakdown?.gross_price || 0;\n      \n      return {\n        id: hotel.hotel_id,\n        name: hotel.hotel_name || hotel.property?.name || 'Hotel name not available',\n        price: price,\n        currency: currency,\n        rating: hotel.review_score || hotel.property?.review_score || 'No rating',\n        reviewCount: hotel.review_nr || hotel.property?.review_nr || 0,\n        distance: hotel.distance_to_cc ? `${hotel.distance_to_cc} km to center` : 'Distance not available',\n        address: hotel.address || hotel.property?.address || 'Address not available',\n        bookingUrl: hotel.url || '',\n        imageUrl: hotel.main_photo_url || hotel.property?.main_photo_url || '',\n        facilities: hotel.hotel_facilities?.slice(0, 3) || hotel.property?.facilities?.slice(0, 3) || [],\n        isFreeCancellation: hotel.is_free_cancellable || hotel.property?.is_free_cancellable || false\n      };\n    } catch (e) {\n      console.log(`Error processing hotel ${hotel.hotel_id}:`, e.message);\n      return null;\n    }\n  }).filter(hotel => hotel !== null);\n}\n\n// Process all currency results\nconst usdHotels = processHotels(usdResults, 'USD');\nconst eurHotels = processHotels(eurResults, 'EUR');\nconst gbpHotels = processHotels(gbpResults, 'GBP');\n\n// Create a map to merge hotels by ID\nconst hotelMap = new Map();\n\n// Add USD prices\nusdHotels.forEach(hotel => {\n  if (!hotelMap.has(hotel.id)) {\n    hotelMap.set(hotel.id, { ...hotel, prices: {} });\n  }\n  hotelMap.get(hotel.id).prices.USD = hotel.price;\n});\n\n// Add EUR prices\neurHotels.forEach(hotel => {\n  if (!hotelMap.has(hotel.id)) {\n    hotelMap.set(hotel.id, { ...hotel, prices: {} });\n  }\n  hotelMap.get(hotel.id).prices.EUR = hotel.price;\n});\n\n// Add GBP prices\ngbpHotels.forEach(hotel => {\n  if (!hotelMap.has(hotel.id)) {\n    hotelMap.set(hotel.id, { ...hotel, prices: {} });\n  }\n  hotelMap.get(hotel.id).prices.GBP = hotel.price;\n});\n\n// Convert map to array and format prices\nconst mergedHotels = Array.from(hotelMap.values()).map((hotel, index) => ({\n  rank: index + 1,\n  name: hotel.name,\n  prices: {\n    USD: hotel.prices.USD ? `$${hotel.prices.USD}` : 'Not available',\n    EUR: hotel.prices.EUR ? `€${hotel.prices.EUR}` : 'Not available',\n    GBP: hotel.prices.GBP ? `£${hotel.prices.GBP}` : 'Not available'\n  },\n  rating: hotel.rating,\n  reviewCount: hotel.reviewCount,\n  distance: hotel.distance,\n  address: hotel.address,\n  bookingUrl: hotel.bookingUrl,\n  imageUrl: hotel.imageUrl,\n  facilities: hotel.facilities,\n  isFreeCancellation: hotel.isFreeCancellation\n}));\n\n// Sort by rating (highest first)\nmergedHotels.sort((a, b) => {\n  if (typeof a.rating === 'number' && typeof b.rating === 'number') {\n    return b.rating - a.rating;\n  }\n  return 0;\n});\n\n// Track which currencies returned results\nconst availableCurrencies = [];\nif (usdHotels.length > 0) availableCurrencies.push('USD');\nif (eurHotels.length > 0) availableCurrencies.push('EUR');\nif (gbpHotels.length > 0) availableCurrencies.push('GBP');\n\nreturn {\n  hotels: mergedHotels.slice(0, 8),\n  location: locationData.locationName,\n  searchData: locationData.searchData,\n  totalFound: mergedHotels.length,\n  currencies: availableCurrencies,\n  searchCriteria: {\n    destination: locationData.searchData.destination,\n    checkIn: locationData.searchData.check_in,\n    checkOut: locationData.searchData.check_out,\n    adults: locationData.searchData.adults,\n    rooms: locationData.searchData.rooms\n  },\n  success: true,\n  apiStatus: {\n    usd: usdResults ? 'success' : 'failed',\n    eur: eurResults ? 'success' : 'failed',\n    gbp: gbpResults ? 'success' : 'failed'\n  },\n  debug: {\n    usdCount: usdHotels.length,\n    eurCount: eurHotels.length,\n    gbpCount: gbpHotels.length\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -176
+      ],
+      "id": "f1fb0e2a-d8b5-477e-85f0-7be67ad4e2aa",
+      "name": "Merge Currency Results"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Create comprehensive hotel recommendations with multi-currency pricing:\n\n**Search Results for {{ $json.location }}**\nDates: {{ $json.searchCriteria.checkIn }} to {{ $json.searchCriteria.checkOut }}\nGuests: {{ $json.searchCriteria.adults }} adults, {{ $json.searchCriteria.rooms }} room(s)\n\n**Hotels Found:** {{ $json.totalFound }} options\n**Available Currencies:** {{ $json.currencies.join(', ') }}\n**API Status:** USD: {{ $json.apiStatus.usd }}, EUR: {{ $json.apiStatus.eur }}, GBP: {{ $json.apiStatus.gbp }}\n**Debug Info:** USD Hotels: {{ $json.debug.usdCount }}, EUR Hotels: {{ $json.debug.eurCount }}, GBP Hotels: {{ $json.debug.gbpCount }}\n\n**Hotel Options:**\n{{ JSON.stringify($json.hotels, null, 2) }}\n\nFormat your response as:\n\n## 🏨 Hotel Recommendations for {{ $json.location }}\n\n**Search Summary:** Found {{ $json.totalFound }} hotels for {{ $json.searchCriteria.adults }} adults from {{ $json.searchCriteria.checkIn }} to {{ $json.searchCriteria.checkOut }}\n\n### Top Recommendations:\n\nFor each hotel (top 5-6), show:\n- **Hotel Name** (⭐ rating/10 - reviewCount reviews)\n- **Multi-Currency Pricing:**\n  - 🇺🇸 USD: $XXX per night (if available)\n  - 🇪🇺 EUR: €XXX per night (if available)\n  - 🇬🇧 GBP: £XXX per night (if available)\n- **Location:** Distance to city center\n- **Highlights:** Key amenities and features\n- **Free Cancellation:** Yes/No\n- **Why Choose:** Brief recommendation reason\n\n### 💡 Booking Tips:\n- Compare prices across available currencies for best value\n- Check direct hotel websites for potential deals\n- Verify cancellation policies before booking\n- Book early for better rates and availability\n\n### 🔗 Next Steps:\n- Use the Booking.com links provided\n- Read recent guest reviews\n- Check room availability for your dates\n\n{% if $json.apiStatus.usd === 'failed' or $json.apiStatus.eur === 'failed' or $json.apiStatus.gbp === 'failed' %}\n### ⚠️ Note:\nSome currency searches encountered issues. Prices shown are from available sources only.\n{% endif %}\n\nBe enthusiastic and highlight the value of having multiple currency options!"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        352,
+        -176
+      ],
+      "id": "fb486d6c-5499-4f70-a6ba-d7037392643d",
+      "name": "Format Multi-Currency Response"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "Extract accommodation search data. Return valid JSON only.\n\nFormat:\n{\n  \"destination\": \"city name only\",\n  \"check_in\": \"YYYY-MM-DD\",\n  \"check_out\": \"YYYY-MM-DD\",\n  \"adults\": number,\n  \"rooms\": number\n}\n\nRules:\n- If no dates provided, use default check-in date\n- Check-out must be at least 1 day after check-in\n- Adults minimum 1, maximum 10\n- Rooms minimum 1, maximum 5\n- Destination should be a recognizable city/location name\n\nRequest: {{ $json.originalQuery }}\nDefault check-in: {{ $json.defaultCheckIn }}\nDefault check-out: {{ $json.defaultCheckOut }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1616,
+        144
+      ],
+      "id": "281a8649-b68e-48e5-a827-9787d0f91418",
+      "name": "Extract Search Data1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.message.content.destination }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1248,
+        144
+      ],
+      "id": "eb3e2a2e-e4a1-4cc3-9542-900264bd344e",
+      "name": "Has Destination?1"
+    },
+    {
+      "parameters": {
+        "url": "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchDestination",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $json.message.content.destination }}"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "booking-com15.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key",
+              "value": "13ace435f8mshd72bd4fc5c0162bp143c20jsnd4c34a42d279"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 10000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1040,
+        -32
+      ],
+      "id": "07ef7848-fe95-4829-ba79-d87bdce73979",
+      "name": "Get Location ID1",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst searchData = $('Extract Search Data1').first().json.message.content;\n\n// Handle API errors\nif (response.error) {\n  return {\n    error: true,\n    message: `API Error: ${response.error.message || 'Unknown error occurred'}`\n  };\n}\n\n// Check if response has data array\nif (!response || !response.data || !Array.isArray(response.data) || response.data.length === 0) {\n  return {\n    error: true,\n    message: `Location not found: ${searchData.destination}`,\n    destination: searchData.destination\n  };\n}\n\n// Find the best location match\n// Priority: city > region > airport > hotel\nconst locations = response.data;\nlet selectedLocation = null;\n\n// First try to find a city\nconst cityLocation = locations.find(loc => loc.search_type === 'city');\nif (cityLocation) {\n  selectedLocation = cityLocation;\n} else {\n  // If no city, try region\n  const regionLocation = locations.find(loc => loc.search_type === 'region');\n  if (regionLocation) {\n    selectedLocation = regionLocation;\n  } else {\n    // Fall back to first available location\n    selectedLocation = locations[0];\n  }\n}\n\nif (!selectedLocation) {\n  return {\n    error: true,\n    message: `No suitable location found for: ${searchData.destination}`,\n    destination: searchData.destination\n  };\n}\n\nreturn {\n  locationId: selectedLocation.dest_id,\n  locationType: selectedLocation.dest_type,\n  locationName: selectedLocation.label,\n  searchData: searchData,\n  success: true,\n  locationDetails: {\n    name: selectedLocation.name,\n    country: selectedLocation.country,\n    region: selectedLocation.region,\n    searchType: selectedLocation.search_type,\n    hotelCount: selectedLocation.nr_hotels\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -832,
+        -32
+      ],
+      "id": "2be285cb-53c9-4885-9f57-9c5a8ce17543",
+      "name": "Process Location1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        -32
+      ],
+      "id": "d255c469-83d9-4d76-b92b-6ee522479e0b",
+      "name": "Location Found?1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const originalQuery = $('Process Input').first().json.originalQuery;\nreturn {\n  error: true,\n  message: `Please specify a destination. You said: \"${originalQuery}\"`,\n  suggestion: 'Please provide a city or location name for your hotel search.'\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1040,
+        304
+      ],
+      "id": "e4b35633-91ae-4d01-87d4-094ece2913e9",
+      "name": "Handle No Destination1"
+    }
+  ],
+  "connections": {
+    "When Called by Travel Agent": {
+      "main": [
+        [
+          {
+            "node": "Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rate Limit Delay": {
+      "main": [
+        [
+          {
+            "node": "Search Hotels (USD)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Hotels (EUR)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search Hotels (GBP)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Input": {
+      "main": [
+        [
+          {
+            "node": "Extract Search Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Hotels (USD)": {
+      "main": [
+        [
+          {
+            "node": "Merge Currency Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Hotels (EUR)": {
+      "main": [
+        [
+          {
+            "node": "Merge Currency Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Hotels (GBP)": {
+      "main": [
+        [
+          {
+            "node": "Merge Currency Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Currency Results": {
+      "main": [
+        [
+          {
+            "node": "Format Multi-Currency Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Search Data1": {
+      "main": [
+        [
+          {
+            "node": "Has Destination?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Destination?1": {
+      "main": [
+        [
+          {
+            "node": "Get Location ID1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle No Destination1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Location ID1": {
+      "main": [
+        [
+          {
+            "node": "Process Location1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Location1": {
+      "main": [
+        [
+          {
+            "node": "Location Found?1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Location Found?1": {
+      "main": [
+        [
+          {
+            "node": "Rate Limit Delay",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Handle Location Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "pinData": {
+    "Extract Search Data1": [
+      {
+        "json": {
+          "message": {
+            "content": {
+              "destination": "Barcelona",
+              "check_in": "2025-07-10",
+              "check_out": "2025-07-15",
+              "adults": 4,
+              "rooms": 2
+            }
+          }
+        }
+      }
+    ]
+  },
+  "triggerCount": 0,
+  "meta": null
+}
