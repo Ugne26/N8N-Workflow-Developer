@@ -1,0 +1,391 @@
+{
+  "createdAt": "2025-08-14T08:25:31.835Z",
+  "updatedAt": "2025-10-28T10:42:52.000Z",
+  "id": "4P8Y8tadpU152rFV",
+  "name": "Grocery List Generator",
+  "active": false,
+  "isArchived": false,
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -1376,
+        384
+      ],
+      "id": "7374ae6f-9cca-4b1b-bc4c-de7add59ac71",
+      "name": "When Called by Main Agent"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst userMessage = input.chatInput || input.query || input.input || '';\n\n// Enhanced grocery details extraction with comprehensive meal database\nconst extractGroceryDetails = (message) => {\n  try {\n    const text = message.toLowerCase();\n    \n    // Get current season\n    const getCurrentSeason = () => {\n      const month = new Date().getMonth() + 1;\n      if (month >= 3 && month <= 5) return 'spring';\n      if (month >= 6 && month <= 8) return 'summer';\n      if (month >= 9 && month <= 11) return 'fall';\n      return 'winter';\n    };\n    \n    // Extract URLs - simplified and more reliable\n    const urlPattern = /(https?:\\/\\/[^\\s]+)/gi;\n    const urls = message.match(urlPattern) || [];\n    \n    // Check if any URL looks like a recipe\n    const recipeUrls = urls.filter(url => {\n      const lower = url.toLowerCase();\n      return lower.includes('recipe') || \n             lower.includes('allrecipes') || \n             lower.includes('foodnetwork') || \n             lower.includes('food.com') || \n             lower.includes('epicurious') ||\n             lower.includes('cooking') ||\n             lower.includes('kitchen') ||\n             lower.includes('chef') ||\n             lower.includes('tasty') ||\n             lower.includes('delish') ||\n             lower.includes('simplyrecipes') ||\n             lower.includes('food52');\n    });\n    \n    const hasRecipeUrl = recipeUrls.length > 0;\n    \n    // Check for recipe URL requests\n    const isRecipeUrlRequest = hasRecipeUrl || \n      /recipe.*url|url.*recipe|recipe.*link|link.*recipe|grocery.*recipe/i.test(message);\n    \n    // Extract number of people\n    let people = 2; // default changed to 2\n    const peopleMatch = text.match(/(\\d+)\\s*(people|person|family|guest|serve)/i);\n    if (peopleMatch) {\n      people = parseInt(peopleMatch[1]) || 2;\n    }\n    people = Math.min(Math.max(people, 1), 12); // reasonable limits\n    \n    // Extract what they already have\n    const pantryItems = [];\n    const alreadyHaveMatch = text.match(/(?:already have|have|got|own)\\s+([^.!?]+)/i);\n    if (alreadyHaveMatch) {\n      const items = alreadyHaveMatch[1].split(/,|and/).map(item => item.trim()).filter(item => item.length > 0);\n      pantryItems.push(...items);\n    }\n    \n    // Comprehensive meal database based on most searched recipes\n    const mealTypes = {\n      // Top 10 Most Popular Meals\n      'spaghetti': {\n        base: ['spaghetti pasta (227g/0.5lb)', 'ground beef (227g/0.5lb)', 'marinara sauce (340g/12oz)', 'onion', 'garlic', 'parmesan cheese (57g/2oz)'],\n        optional: ['mushrooms', 'bell peppers', 'italian seasoning', 'olive oil']\n      },\n      'chicken breast': {\n        base: ['chicken breast (340g/0.75lb)', 'olive oil', 'garlic powder', 'salt', 'black pepper'],\n        optional: ['lemon', 'herbs', 'vegetables for sides']\n      },\n      'tacos': {\n        base: ['ground beef (227g/0.5lb)', 'taco shells (6 pack)', 'lettuce', 'tomatoes', 'cheese (113g/4oz)', 'onion'],\n        optional: ['sour cream', 'salsa', 'avocado', 'cilantro', 'lime']\n      },\n      'cheeseburger': {\n        base: ['ground beef (340g/0.75lb)', 'burger buns (4 pack)', 'cheese slices (113g/4oz)', 'lettuce', 'tomatoes', 'onion'],\n        optional: ['pickles', 'ketchup', 'mustard', 'mayo', 'bacon']\n      },\n      'burger': {\n        base: ['ground beef (340g/0.75lb)', 'burger buns (4 pack)', 'lettuce', 'tomatoes', 'onion'],\n        optional: ['cheese', 'pickles', 'ketchup', 'mustard', 'mayo']\n      },\n      \n      // Asian Favorites\n      'fried rice': {\n        base: ['rice (454g/1lb)', 'eggs (3 pack)', 'soy sauce', 'vegetable oil', 'green onions', 'garlic'],\n        optional: ['mixed frozen vegetables', 'sesame oil', 'ginger']\n      },\n      'chicken stir fry': {\n        base: ['chicken breast (340g/0.75lb)', 'mixed vegetables (227g/0.5lb)', 'soy sauce', 'garlic', 'ginger', 'vegetable oil'],\n        optional: ['rice', 'sesame oil', 'cornstarch', 'green onions']\n      },\n      'ramen': {\n        base: ['ramen noodles (2 pack)', 'eggs', 'green onions', 'garlic', 'soy sauce'],\n        optional: ['chicken broth', 'mushrooms', 'corn', 'seaweed']\n      },\n      \n      // Italian Classics\n      'pasta': {\n        base: ['pasta (227g/0.5lb)', 'marinara sauce (340g/12oz)', 'garlic', 'olive oil', 'parmesan cheese (57g/2oz)'],\n        optional: ['basil', 'onion', 'ground beef', 'mushrooms']\n      },\n      'pizza': {\n        base: ['pizza dough (1 pack)', 'pizza sauce (113g/4oz)', 'mozzarella cheese (113g/4oz)'],\n        optional: ['pepperoni', 'mushrooms', 'bell peppers', 'onions', 'italian sausage']\n      },\n      'lasagna': {\n        base: ['lasagna noodles (227g/0.5lb)', 'ground beef (227g/0.5lb)', 'ricotta cheese (227g/0.5lb)', 'mozzarella (113g/4oz)', 'marinara sauce (340g/12oz)', 'eggs'],\n        optional: ['parmesan cheese', 'italian seasoning', 'onion', 'garlic']\n      },\n      \n      // Mexican Favorites\n      'quesadilla': {\n        base: ['tortillas (5 pack)', 'cheese (113g/4oz)', 'chicken breast (227g/0.5lb)'],\n        optional: ['bell peppers', 'onions', 'salsa', 'sour cream', 'guacamole']\n      },\n      'enchiladas': {\n        base: ['tortillas (5 pack)', 'chicken breast (227g/0.5lb)', 'enchilada sauce (227g/8oz)', 'cheese (113g/4oz)'],\n        optional: ['onions', 'sour cream', 'cilantro', 'beans']\n      },\n      'burrito': {\n        base: ['large tortillas (4 pack)', 'rice (227g/0.5lb)', 'beans (213g/7.5oz can)', 'cheese (113g/4oz)', 'chicken or beef (227g/0.5lb)'],\n        optional: ['lettuce', 'tomatoes', 'sour cream', 'salsa', 'avocado']\n      },\n      \n      // Comfort Foods\n      'mac and cheese': {\n        base: ['macaroni (227g/0.5lb)', 'cheese (227g/0.5lb)', 'milk (473ml/0.5qt)', 'butter (57g/2oz)'],\n        optional: ['breadcrumbs', 'bacon', 'flour for roux']\n      },\n      'grilled cheese': {\n        base: ['bread (0.5 loaf)', 'cheese slices (113g/4oz)', 'butter (57g/2oz)'],\n        optional: ['tomato soup', 'ham', 'bacon']\n      },\n      'meatloaf': {\n        base: ['ground beef (454g/1lb)', 'breadcrumbs (57g/2oz)', 'eggs', 'onion', 'ketchup'],\n        optional: ['worcestershire sauce', 'garlic', 'milk']\n      },\n      \n      // Breakfast Items\n      'pancakes': {\n        base: ['flour (454g/1lb)', 'eggs', 'milk (473ml/0.5qt)', 'baking powder', 'sugar', 'butter'],\n        optional: ['vanilla extract', 'syrup', 'berries']\n      },\n      'french toast': {\n        base: ['bread (0.5 loaf)', 'eggs', 'milk (237ml/1cup)', 'cinnamon', 'vanilla extract', 'butter'],\n        optional: ['syrup', 'powdered sugar', 'berries']\n      },\n      'scrambled eggs': {\n        base: ['eggs (6 pack)', 'milk (237ml/1cup)', 'butter', 'salt', 'pepper'],\n        optional: ['cheese', 'herbs', 'vegetables']\n      },\n      \n      // Chicken Dishes\n      'chicken alfredo': {\n        base: ['chicken breast (340g/0.75lb)', 'fettuccine (227g/0.5lb)', 'heavy cream (237ml/1cup)', 'parmesan (57g/2oz)', 'garlic', 'butter'],\n        optional: ['broccoli', 'mushrooms', 'italian seasoning']\n      },\n      'chicken parmesan': {\n        base: ['chicken breast (340g/0.75lb)', 'breadcrumbs (57g/2oz)', 'parmesan (57g/2oz)', 'mozzarella (113g/4oz)', 'marinara (340g/12oz)', 'eggs'],\n        optional: ['flour', 'italian seasoning', 'pasta']\n      },\n      'bbq chicken': {\n        base: ['chicken (half or pieces)', 'bbq sauce (227g/8oz)'],\n        optional: ['coleslaw mix', 'burger buns', 'pickles']\n      },\n      \n      // Seafood\n      'salmon': {\n        base: ['salmon fillets (340g/0.75lb)', 'lemon', 'olive oil', 'garlic', 'herbs'],\n        optional: ['asparagus', 'rice', 'capers']\n      },\n      'fish tacos': {\n        base: ['white fish (227g/0.5lb)', 'tortillas (5 pack)', 'cabbage', 'lime', 'cilantro'],\n        optional: ['avocado', 'sour cream', 'hot sauce', 'onion']\n      },\n      'shrimp scampi': {\n        base: ['shrimp (227g/0.5lb)', 'pasta (227g/0.5lb)', 'garlic', 'white wine', 'butter', 'lemon'],\n        optional: ['parsley', 'red pepper flakes', 'parmesan']\n      },\n      \n      // Soups & Stews\n      'chicken noodle soup': {\n        base: ['chicken breast (227g/0.5lb)', 'egg noodles (113g/4oz)', 'carrots', 'celery', 'onion', 'chicken broth (473ml/0.5qt)'],\n        optional: ['herbs', 'garlic', 'bay leaves']\n      },\n      'beef stew': {\n        base: ['beef chunks (454g/1lb)', 'potatoes', 'carrots', 'onion', 'beef broth (473ml/0.5qt)', 'tomato paste'],\n        optional: ['celery', 'herbs', 'flour for thickening']\n      },\n      'tomato soup': {\n        base: ['canned tomatoes (397g/14oz)', 'vegetable broth (473ml/0.5qt)', 'onion', 'garlic', 'heavy cream (118ml/0.5cup)'],\n        optional: ['basil', 'bread for grilled cheese']\n      },\n      'chili': {\n        base: ['ground beef (227g/0.5lb)', 'kidney beans (213g/7.5oz)', 'diced tomatoes (397g/14oz)', 'onion', 'chili powder', 'cumin'],\n        optional: ['bell peppers', 'garlic', 'cheese', 'sour cream']\n      },\n      \n      // Salads & Light Meals\n      'caesar salad': {\n        base: ['romaine lettuce', 'parmesan cheese (57g/2oz)', 'croutons', 'caesar dressing'],\n        optional: ['chicken breast', 'anchovies', 'lemon']\n      },\n      'greek salad': {\n        base: ['cucumbers', 'tomatoes', 'red onion', 'feta cheese (57g/2oz)', 'olives', 'olive oil'],\n        optional: ['lettuce', 'bell peppers', 'oregano']\n      },\n      'chicken salad': {\n        base: ['chicken breast (227g/0.5lb)', 'mayonnaise', 'celery', 'onion'],\n        optional: ['grapes', 'nuts', 'bread', 'lettuce']\n      },\n      \n      // Vegetarian Options\n      'vegetable stir fry': {\n        base: ['mixed vegetables (227g/0.5lb)', 'soy sauce', 'garlic', 'ginger', 'vegetable oil', 'rice'],\n        optional: ['tofu', 'sesame oil', 'green onions']\n      },\n      'caprese salad': {\n        base: ['tomatoes', 'fresh mozzarella (113g/4oz)', 'fresh basil', 'olive oil', 'balsamic vinegar'],\n        optional: ['bread', 'salt', 'pepper']\n      },\n      'veggie burger': {\n        base: ['veggie patties (2 pack)', 'burger buns', 'lettuce', 'tomatoes', 'onion'],\n        optional: ['cheese', 'avocado', 'condiments']\n      }\n    };\n    \n    // Detect meal with fuzzy matching\n    let detectedMeal = null;\n    let mealIngredients = [];\n    \n    // Direct word matching\n    for (const [meal, data] of Object.entries(mealTypes)) {\n      if (text.includes(meal)) {\n        detectedMeal = meal;\n        mealIngredients = [...data.base, ...data.optional];\n        break;\n      }\n    }\n    \n    // Fuzzy matching for variations\n    if (!detectedMeal) {\n      const variations = {\n        'spaghetti': ['spag', 'pasta with meat sauce', 'bolognese'],\n        'chicken breast': ['grilled chicken', 'baked chicken', 'chicken dinner'],\n        'tacos': ['taco night', 'mexican tacos'],\n        'cheeseburger': ['cheese burger', 'hamburger with cheese'],\n        'fried rice': ['chinese fried rice', 'egg fried rice'],\n        'chicken stir fry': ['stir fry chicken', 'chicken and vegetables'],\n        'mac and cheese': ['macaroni and cheese', 'mac n cheese', 'kraft dinner'],\n        'grilled cheese': ['grilled cheese sandwich', 'cheese sandwich'],\n        'chicken alfredo': ['fettuccine alfredo', 'alfredo pasta'],\n        'chicken parmesan': ['chicken parm', 'parmesan chicken'],\n        'fish tacos': ['fish taco', 'seafood tacos'],\n        'caesar salad': ['caesar', 'chicken caesar'],\n        'beef stew': ['stew', 'beef and vegetable stew'],\n        'tomato soup': ['tomato bisque', 'cream of tomato']\n      };\n      \n      for (const [meal, alts] of Object.entries(variations)) {\n        if (alts.some(alt => text.includes(alt))) {\n          detectedMeal = meal;\n          mealIngredients = [...mealTypes[meal].base, ...mealTypes[meal].optional];\n          break;\n        }\n      }\n    }\n    \n    return {\n      people,\n      detectedMeal,\n      mealIngredients,\n      recipeUrls,\n      hasRecipeUrl,\n      isRecipeUrlRequest,\n      pantryItems,\n      currentSeason: getCurrentSeason(),\n      originalMessage: message,\n      error: null\n    };\n  } catch (error) {\n    return {\n      people: 2,\n      detectedMeal: null,\n      mealIngredients: [],\n      recipeUrls: [],\n      hasRecipeUrl: false,\n      isRecipeUrlRequest: false,\n      pantryItems: [],\n      currentSeason: 'spring',\n      originalMessage: message,\n      error: error.message\n    };\n  }\n};\n\nconst details = extractGroceryDetails(userMessage);\n\nreturn {\n  ...details,\n  sessionId: input.sessionId,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        384
+      ],
+      "id": "57b4f63c-3adf-466a-a9fa-e24c2af18c6a",
+      "name": "Extract Grocery Details"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "no-error",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": {},
+              "operator": {
+                "type": "object",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        384
+      ],
+      "id": "b6a906e8-77b1-44c0-b8b0-c8d1f0fe35c8",
+      "name": "Check for Errors"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "has-recipe-url",
+              "leftValue": "={{ $json.hasRecipeUrl }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        480
+      ],
+      "id": "ea078eb5-c85e-4111-b806-06d9d31e4a1a",
+      "name": "Has Recipe URL?"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.recipeUrls[0] }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          },
+          "timeout": 15000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -496,
+        320
+      ],
+      "id": "c0a63380-9ed2-4020-9b31-db2ff79be571",
+      "name": "Fetch Recipe"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "http-success",
+              "leftValue": "={{ $('Fetch Recipe').first().json?.data ? true : false }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        400
+      ],
+      "id": "6a814fc8-f0fc-4437-bd89-bb22d50baf97",
+      "name": "Check HTTP Success"
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $('Fetch Recipe').first().json.data;\nconst details = $('Extract Grocery Details').first().json;\n\n// Limit HTML size to avoid processing massive content\nconst maxHtmlSize = 500000; // 500KB limit\nconst truncatedHtml = html.length > maxHtmlSize ? html.substring(0, maxHtmlSize) : html;\n\nconsole.log(`HTML size: ${html.length} chars, processing: ${truncatedHtml.length} chars`);\n\nlet ingredients = [];\nlet recipeTitle = '';\nlet servings = details.people;\n\n// Method 1: JSON-LD structured data (most reliable and efficient)\ntry {\n  const jsonLdMatches = truncatedHtml.match(/<script[^>]*type=[\"']application\\/ld\\+json[\"'][^>]*>([\\s\\S]*?)<\\/script>/gi);\n  \n  if (jsonLdMatches) {\n    console.log(`Found ${jsonLdMatches.length} JSON-LD scripts`);\n    \n    for (const match of jsonLdMatches) {\n      try {\n        const cleanJson = match.replace(/<script[^>]*>/, '').replace(/<\\/script>/, '').trim();\n        const data = JSON.parse(cleanJson);\n        \n        // Handle array of objects or single object\n        const recipes = Array.isArray(data) ? data : [data];\n        \n        for (const item of recipes) {\n          // Look for Recipe type or recipeIngredient property\n          if (item['@type'] === 'Recipe' || item.recipeIngredient) {\n            if (item.recipeIngredient && Array.isArray(item.recipeIngredient) && item.recipeIngredient.length > 0) {\n              ingredients = item.recipeIngredient;\n              recipeTitle = item.name || '';\n              servings = item.recipeYield || item.yield || details.people;\n              console.log(`Found ${ingredients.length} ingredients via JSON-LD`);\n              break;\n            }\n          }\n          \n          // Some sites nest recipes differently\n          if (item['@graph']) {\n            const recipeInGraph = item['@graph'].find(graphItem => graphItem['@type'] === 'Recipe');\n            if (recipeInGraph && recipeInGraph.recipeIngredient) {\n              ingredients = recipeInGraph.recipeIngredient;\n              recipeTitle = recipeInGraph.name || '';\n              servings = recipeInGraph.recipeYield || recipeInGraph.yield || details.people;\n              console.log(`Found ${ingredients.length} ingredients via JSON-LD graph`);\n              break;\n            }\n          }\n        }\n        \n        if (ingredients.length > 0) break;\n      } catch (e) {\n        console.log('JSON-LD parsing error:', e.message);\n        continue;\n      }\n    }\n  } else {\n    console.log('No JSON-LD scripts found');\n  }\n} catch (e) {\n  console.log('JSON-LD search failed:', e.message);\n}\n\n// Method 2: Microdata (schema.org) - very targeted\nif (ingredients.length === 0) {\n  console.log('Trying microdata extraction...');\n  \n  const microdataPattern = /<[^>]*itemprop=[\"']recipeIngredient[\"'][^>]*>(.*?)<\\/[^>]*>/gi;\n  const microdataMatches = truncatedHtml.match(microdataPattern);\n  \n  if (microdataMatches) {\n    ingredients = microdataMatches.map(match => \n      match.replace(/<[^>]*>/g, '').trim()\n    ).filter(text => text.length > 2);\n    \n    console.log(`Found ${ingredients.length} ingredients via microdata`);\n  }\n}\n\n// Method 3: Common CSS selectors - limited search area\nif (ingredients.length === 0) {\n  console.log('Trying CSS selector extraction...');\n  \n  // Look for ingredients section first to limit search area\n  const ingredientSectionPatterns = [\n    /<div[^>]*class=\"[^\"]*ingredients[^\"]*\"[^>]*>([\\s\\S]*?)<\\/div>/i,\n    /<section[^>]*class=\"[^\"]*ingredients[^\"]*\"[^>]*>([\\s\\S]*?)<\\/section>/i,\n    /<ul[^>]*class=\"[^\"]*ingredients[^\"]*\"[^>]*>([\\s\\S]*?)<\\/ul>/i\n  ];\n  \n  let ingredientSection = '';\n  for (const pattern of ingredientSectionPatterns) {\n    const match = truncatedHtml.match(pattern);\n    if (match) {\n      ingredientSection = match[1];\n      console.log(`Found ingredients section: ${ingredientSection.length} chars`);\n      break;\n    }\n  }\n  \n  // If no specific section found, use truncated HTML but limit further\n  const searchArea = ingredientSection || truncatedHtml.substring(0, 100000); // 100KB max\n  \n  // Common ingredient list patterns\n  const patterns = [\n    /<li[^>]*class=\"[^\"]*ingredient[^\"]*\"[^>]*>(.*?)<\\/li>/gi,\n    /<li[^>]*class=\"[^\"]*recipe-ingredient[^\"]*\"[^>]*>(.*?)<\\/li>/gi,\n    /<div[^>]*class=\"[^\"]*ingredient[^\"]*\"[^>]*>(.*?)<\\/div>/gi,\n    /<span[^>]*class=\"[^\"]*ingredient[^\"]*\"[^>]*>(.*?)<\\/span>/gi\n  ];\n  \n  for (const pattern of patterns) {\n    const matches = searchArea.match(pattern);\n    if (matches && matches.length > 0) {\n      ingredients = matches.map(match => \n        match.replace(/<[^>]*>/g, '').trim()\n      ).filter(text => text.length > 2 && !text.match(/^(instructions|directions|method)/i));\n      \n      if (ingredients.length > 0) {\n        console.log(`Found ${ingredients.length} ingredients via CSS pattern`);\n        break;\n      }\n    }\n  }\n}\n\n// Extract recipe title if not found\nif (!recipeTitle) {\n  const titleMatch = truncatedHtml.match(/<title[^>]*>([^<]+)<\\/title>/i) || \n                     truncatedHtml.match(/<h1[^>]*>([^<]+)<\\/h1>/i);\n  if (titleMatch) {\n    recipeTitle = titleMatch[1].replace(/\\s*\\|.*$/, '').trim();\n  }\n}\n\n// Early exit if no ingredients found\nif (ingredients.length === 0) {\n  console.log('No ingredients found in recipe');\n  return {\n    output: `Could not extract ingredients from recipe URL. Please check the link or try describing the meal instead.`,\n    success: false,\n    extractedIngredients: 0,\n    recipeTitle: recipeTitle || 'Unknown Recipe',\n    method: 'failed',\n    timestamp: new Date().toISOString()\n  };\n}\n\n// Scale ingredients if needed\nif (servings && servings !== details.people && typeof servings === 'number') {\n  const scaleFactor = details.people / servings;\n  console.log(`Scaling from ${servings} to ${details.people} servings (factor: ${scaleFactor})`);\n  \n  ingredients = ingredients.map(ingredient => {\n    return ingredient.replace(/(\\d+(?:\\.\\d+)?)/g, (match) => {\n      const num = parseFloat(match);\n      const scaled = num * scaleFactor;\n      return scaled % 1 === 0 ? scaled.toString() : scaled.toFixed(1);\n    });\n  });\n}\n\n// Format ingredients with measurements in (metric/imperial) format\nconst formatIngredient = (ingredient) => {\n  let formatted = ingredient;\n  \n  // Cups to ml conversion\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*cups?\\b/gi, (match, num) => {\n    const ml = Math.round(parseFloat(num) * 240);\n    return `(${ml}ml/${match})`;\n  });\n  \n  // Pounds to grams conversion\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*(?:lbs?|pounds?)\\b/gi, (match, num) => {\n    const g = Math.round(parseFloat(num) * 454);\n    return `(${g}g/${match})`;\n  });\n  \n  // Ounces to grams conversion\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*oz\\b/gi, (match, num) => {\n    const g = Math.round(parseFloat(num) * 28);\n    return `(${g}g/${match})`;\n  });\n  \n  // Tablespoons to ml\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*(?:tbsp|tablespoons?)\\b/gi, (match, num) => {\n    const ml = Math.round(parseFloat(num) * 15);\n    return `(${ml}ml/${match})`;\n  });\n  \n  // Teaspoons to ml\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*(?:tsp|teaspoons?)\\b/gi, (match, num) => {\n    const ml = Math.round(parseFloat(num) * 5);\n    return `(${ml}ml/${match})`;\n  });\n  \n  // Fluid ounces to ml\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*fl\\s*oz\\b/gi, (match, num) => {\n    const ml = Math.round(parseFloat(num) * 30);\n    return `(${ml}ml/${match})`;\n  });\n  \n  // Pints to ml\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*pints?\\b/gi, (match, num) => {\n    const ml = Math.round(parseFloat(num) * 473);\n    return `(${ml}ml/${match})`;\n  });\n  \n  // Quarts to ml\n  formatted = formatted.replace(/(\\d+(?:\\.\\d+)?)\\s*(?:qts?|quarts?)\\b/gi, (match, num) => {\n    const ml = Math.round(parseFloat(num) * 946);\n    return `(${ml}ml/${match})`;\n  });\n  \n  return formatted.trim();\n};\n\n// Categorize and filter ingredients\nconst categories = {\n  meat: [],\n  dairy: [],\n  produce: [],\n  pantry: [],\n  frozen: []\n};\n\nconst skipItems = details.pantryItems.map(item => item.toLowerCase());\nconsole.log(`Filtering out pantry items: ${skipItems.join(', ')}`);\n\nlet skippedCount = 0;\ningredients.forEach(ingredient => {\n  const lower = ingredient.toLowerCase();\n  \n  // Check if user already has this item\n  const shouldSkip = skipItems.some(skipItem => \n    lower.includes(skipItem) || skipItem.includes(lower.split(' ')[0])\n  );\n  \n  if (shouldSkip) {\n    skippedCount++;\n    return;\n  }\n  \n  // Format the ingredient with measurements\n  const formattedIngredient = formatIngredient(ingredient);\n  \n  // Categorize (simplified logic)\n  if (/\\b(chicken|beef|pork|fish|salmon|shrimp|turkey|lamb|meat)\\b/i.test(ingredient)) {\n    categories.meat.push(formattedIngredient);\n  } else if (/\\b(milk|cheese|butter|cream|yogurt|egg)\\b/i.test(ingredient)) {\n    categories.dairy.push(formattedIngredient);\n  } else if (/\\b(onion|garlic|tomato|pepper|lettuce|carrot|celery|mushroom|spinach|broccoli|lemon|lime|cucumber|avocado|cilantro|parsley)\\b/i.test(ingredient)) {\n    categories.produce.push(formattedIngredient);\n  } else if (/frozen/i.test(ingredient)) {\n    categories.frozen.push(formattedIngredient);\n  } else {\n    categories.pantry.push(formattedIngredient);\n  }\n});\n\nconsole.log(`Categorized ${ingredients.length} ingredients, skipped ${skippedCount}`);\n\n// Build clean grocery list\nlet output = `**${recipeTitle.toUpperCase() || 'RECIPE'} - ${details.people} people**\\n\\n`;\n\nif (categories.meat.length) {\n  output += `**Meat & Seafood**\\n${categories.meat.map(i => `• ${i}`).join('\\n')}\\n\\n`;\n}\n\nif (categories.dairy.length) {\n  output += `**Dairy & Eggs**\\n${categories.dairy.map(i => `• ${i}`).join('\\n')}\\n\\n`;\n}\n\nif (categories.produce.length) {\n  output += `**Produce**\\n${categories.produce.map(i => `• ${i}`).join('\\n')}\\n\\n`;\n}\n\nif (categories.pantry.length) {\n  output += `**Pantry**\\n${categories.pantry.map(i => `• ${i}`).join('\\n')}\\n\\n`;\n}\n\nif (categories.frozen.length) {\n  output += `**Frozen**\\n${categories.frozen.map(i => `• ${i}`).join('\\n')}\\n\\n`;\n}\n\nif (details.pantryItems.length > 0) {\n  output += `**Skipped** (you have): ${details.pantryItems.join(', ')}`;\n}\n\nconsole.log(`Final output length: ${output.length} chars`);\n\nreturn {\n  output: output,\n  success: true,\n  extractedIngredients: ingredients.length,\n  recipeTitle: recipeTitle,\n  method: 'extracted',\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        224
+      ],
+      "id": "bacd2c8d-d979-40c5-b213-71e8913eb860",
+      "name": "Recipe Scraper"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Efficient grocery list - {{ $json.people }} people - {{ $json.originalMessage }}\n\n{{ $json.pantryItems?.length > 0 ? 'User owns: ' + $json.pantryItems.join(', ') : '' }}\n\nONLY list items that require purchasing:\n- Fresh ingredients\n- Main proteins  \n- All spices, seasonings, and oils\n- Specialty items\n- Standard grocery sizes: (grams/ounces)\n\nInclude everything the recipe calls for.\n\n**Meat & Seafood**\n- \n\n**Dairy & Eggs**\n- \n\n**Produce**\n- \n\n**Pantry**\n- \n\n**Frozen**\n-"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -80,
+        672
+      ],
+      "id": "f0a11c70-044c-4652-8680-c21cfca50eea",
+      "name": "General Grocery Generator"
+    },
+    {
+      "parameters": {
+        "jsCode": "const details = $json;\n\nreturn {\n  output: `Error processing grocery list request: ${details.error}\\n\\nPlease try rephrasing your request.`,\n  success: false,\n  error: details.error,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a8a53717-1a83-4030-a991-ed01913d4b06",
+      "name": "Error Handler"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the AI response from whichever path was taken\nconst aiResponse = $input.first().json;\n\n// Extract the actual response text\nlet response = aiResponse.output || \n               aiResponse.text || \n               aiResponse.content ||\n               aiResponse.message ||\n               (aiResponse.choices?.[0]?.message?.content) ||\n               (typeof aiResponse === 'string' ? aiResponse : null);\n\n// Get original details\nconst details = $('Extract Grocery Details').first().json;\n\n// If no response, create a simple fallback\nif (!response) {\n  if (details.hasRecipeUrl) {\n    response = `Couldn't access recipe URL. What type of meal is it?`;\n  } else if (details.detectedMeal) {\n    response = `**${details.detectedMeal.toUpperCase()} - ${details.people} people**\\n\\n` +\n               `**Meat & Seafood**\\n• Ground beef (500g/1 lb)\\n\\n` +\n               `**Produce**\\n• Lettuce\\n• Tomatoes\\n• Onions\\n\\n` +\n               `**Pantry**\\n• Burger buns\\n• Cheese slices`;\n  } else {\n    response = `What meal would you like a grocery list for?`;\n  }\n}\n\nreturn {\n  output: response,\n  success: true,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        384
+      ],
+      "id": "bbf7e202-f9d4-49c1-9a5a-cf203123a85e",
+      "name": "Format Response"
+    },
+    {
+      "parameters": {
+        "jsCode": "const details = $json;\n\nreturn {\n  output: `Recipe URL not accessible: ${details.recipeUrls[0]}\\n\\nWhat type of meal is it? (e.g. pasta, chicken, soup)`,\n  success: false,\n  timestamp: new Date().toISOString()\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        448
+      ],
+      "id": "15d96041-55b3-4a07-aa0a-c3df00482916",
+      "name": "HTTP Error Handler1"
+    }
+  ],
+  "connections": {
+    "When Called by Main Agent": {
+      "main": [
+        [
+          {
+            "node": "Extract Grocery Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Grocery Details": {
+      "main": [
+        [
+          {
+            "node": "Check for Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Errors": {
+      "main": [
+        [
+          {
+            "node": "Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Recipe URL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Recipe URL?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Recipe",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "General Grocery Generator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Recipe": {
+      "main": [
+        [
+          {
+            "node": "Check HTTP Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check HTTP Success": {
+      "main": [
+        [
+          {
+            "node": "Recipe Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "HTTP Error Handler1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Recipe Scraper": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "General Grocery Generator": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Handler": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Error Handler1": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": null,
+  "versionId": "f86e954f-bde7-4873-a39c-cca2a5a28a8a",
+  "triggerCount": 0,
+  "shared": [
+    {
+      "createdAt": "2025-08-14T08:25:31.842Z",
+      "updatedAt": "2025-08-14T08:25:31.842Z",
+      "role": "workflow:owner",
+      "workflowId": "4P8Y8tadpU152rFV",
+      "projectId": "oJ2gUZeixLG9gKgn"
+    }
+  ],
+  "tags": [
+    {
+      "createdAt": "2025-10-28T10:40:37.115Z",
+      "updatedAt": "2025-10-28T10:40:37.115Z",
+      "id": "tE9caYnSxgjIeeUR",
+      "name": "sync-to-github"
+    }
+  ]
+}
