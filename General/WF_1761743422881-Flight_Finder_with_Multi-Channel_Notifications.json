@@ -1,0 +1,406 @@
+{
+  "name": "Flight Finder with Multi-Channel Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "flight-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-123456789000",
+      "name": "Flight Search Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "flight-search-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract flight search parameters\nconst body = $input.first().json.body;\n\nreturn [{\n  json: {\n    origin: body.origin || '',\n    destination: body.destination || '',\n    departureDate: body.departureDate || '',\n    returnDate: body.returnDate || '',\n    passengers: body.passengers || 1,\n    class: body.class || 'economy',\n    userEmail: body.userEmail || '',\n    userPhone: body.userPhone || '',\n    slackChannel: body.slackChannel || '',\n    telegramChatId: body.telegramChatId || '',\n    searchId: Math.random().toString(36).substr(2, 9)\n  }\n}];"
+      },
+      "id": "b2c3d4e5-f6g7-8901-bcde-234567890001",
+      "name": "Process Search Parameters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "=https://api.amadeus.com/v2/shopping/flight-offers",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "amadeusApi",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "originLocationCode",
+              "value": "={{ $json.origin }}"
+            },
+            {
+              "name": "destinationLocationCode",
+              "value": "={{ $json.destination }}"
+            },
+            {
+              "name": "departureDate",
+              "value": "={{ $json.departureDate }}"
+            },
+            {
+              "name": "returnDate",
+              "value": "={{ $json.returnDate }}"
+            },
+            {
+              "name": "adults",
+              "value": "={{ $json.passengers }}"
+            },
+            {
+              "name": "travelClass",
+              "value": "={{ $json.class.toUpperCase() }}"
+            },
+            {
+              "name": "max",
+              "value": "10"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c3d4e5f6-g7h8-9012-cdef-345678901002",
+      "name": "Search Flights API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        660,
+        300
+      ],
+      "credentials": {
+        "amadeusApi": {
+          "id": "placeholder_amadeus_api",
+          "name": "Amadeus API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process flight search results\nconst searchData = $input.first().json;\nconst flightOffers = searchData.data || [];\n\nif (flightOffers.length === 0) {\n  return [{\n    json: {\n      success: false,\n      message: 'No flights found for your search criteria',\n      searchParams: $('Process Search Parameters').first().json,\n      flights: []\n    }\n  }];\n}\n\n// Format flight results\nconst formattedFlights = flightOffers.slice(0, 5).map((offer, index) => {\n  const outbound = offer.itineraries[0];\n  const inbound = offer.itineraries[1] || null;\n  \n  return {\n    id: offer.id,\n    rank: index + 1,\n    price: {\n      total: offer.price.total,\n      currency: offer.price.currency\n    },\n    outbound: {\n      departure: outbound.segments[0].departure,\n      arrival: outbound.segments[outbound.segments.length - 1].arrival,\n      duration: outbound.duration,\n      stops: outbound.segments.length - 1,\n      airline: outbound.segments[0].carrierCode\n    },\n    inbound: inbound ? {\n      departure: inbound.segments[0].departure,\n      arrival: inbound.segments[inbound.segments.length - 1].arrival,\n      duration: inbound.duration,\n      stops: inbound.segments.length - 1,\n      airline: inbound.segments[0].carrierCode\n    } : null\n  };\n});\n\n// Create notification message\nconst searchParams = $('Process Search Parameters').first().json;\nlet message = `🛫 Flight Search Results Found!\\n\\n`;\nmessage += `Search Details:\\n`;\nmessage += `📍 ${searchParams.origin} ➡️ ${searchParams.destination}\\n`;\nmessage += `📅 ${searchParams.departureDate}`;\nif (searchParams.returnDate) {\n  message += ` - ${searchParams.returnDate}`;\n}\nmessage += `\\n👥 ${searchParams.passengers} passenger(s)\\n\\n`;\n\nmessage += `Top Flight Options:\\n`;\nformattedFlights.forEach(flight => {\n  message += `\\n${flight.rank}. ${flight.price.currency} ${flight.price.total}\\n`;\n  message += `   Outbound: ${flight.outbound.departure.iataCode} → ${flight.outbound.arrival.iataCode}\\n`;\n  message += `   ${flight.outbound.departure.at} - ${flight.outbound.arrival.at}\\n`;\n  message += `   Duration: ${flight.outbound.duration} | Stops: ${flight.outbound.stops}\\n`;\n  \n  if (flight.inbound) {\n    message += `   Return: ${flight.inbound.departure.iataCode} → ${flight.inbound.arrival.iataCode}\\n`;\n    message += `   ${flight.inbound.departure.at} - ${flight.inbound.arrival.at}\\n`;\n  }\n});\n\nmessage += `\\n\\nPlease confirm your preferred option to proceed with booking.`;\n\nreturn [{\n  json: {\n    success: true,\n    message: 'Flights found successfully',\n    searchParams: searchParams,\n    flights: formattedFlights,\n    notificationMessage: message,\n    emailSubject: `Flight Search Results: ${searchParams.origin} to ${searchParams.destination}`,\n    htmlMessage: message.replace(/\\n/g, '<br>')\n  }\n}];"
+      },
+      "id": "d4e5f6g7-h8i9-0123-defg-456789012003",
+      "name": "Process Flight Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e5f6g7h8-i9j0-1234-efgh-567890123004",
+      "name": "Check Results",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Process Search Parameters').first().json.userEmail }}",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.htmlMessage }}"
+      },
+      "id": "f6g7h8i9-j0k1-2345-fghi-678901234005",
+      "name": "Send Gmail Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        180
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "placeholder_gmail_oauth",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "value": "={{ $('Process Search Parameters').first().json.slackChannel }}",
+          "mode": "name"
+        },
+        "text": "={{ $json.notificationMessage }}",
+        "otherOptions": {}
+      },
+      "id": "g7h8i9j0-k1l2-3456-ghij-789012345006",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.1,
+      "position": [
+        1320,
+        300
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "placeholder_slack_oauth",
+          "name": "Slack OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Process Search Parameters').first().json.telegramChatId }}",
+        "text": "={{ $json.notificationMessage }}"
+      },
+      "id": "h8i9j0k1-l2m3-4567-hijk-890123456007",
+      "name": "Send Telegram Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        420
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "placeholder_telegram_api",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}"
+      },
+      "id": "i9j0k1l2-m3n4-5678-ijkl-901234567008",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": false,\n  \"message\": \"No flights found for your search criteria\",\n  \"searchParams\": {{ JSON.stringify($('Process Search Parameters').first().json) }}\n}",
+        "responseCode": 404
+      },
+      "id": "j0k1l2m3-n4o5-6789-jklm-012345678009",
+      "name": "No Results Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1320,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle API errors and format error response\nconst error = $input.first();\nconst searchParams = $('Process Search Parameters').first().json;\n\nreturn [{\n  json: {\n    success: false,\n    message: 'Error searching for flights. Please try again later.',\n    error: error.error?.message || 'Unknown error',\n    searchParams: searchParams\n  }\n}];"
+      },
+      "id": "k1l2m3n4-o5p6-7890-klmn-123456789010",
+      "name": "Handle API Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "responseCode": 500
+      },
+      "id": "l2m3n4o5-p6q7-8901-lmno-234567890011",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        520
+      ]
+    }
+  ],
+  "connections": {
+    "Flight Search Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Search Parameters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Search Parameters": {
+      "main": [
+        [
+          {
+            "node": "Search Flights API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Flights API": {
+      "main": [
+        [
+          {
+            "node": "Process Flight Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ],
+      "error": [
+        [
+          {
+            "node": "Handle API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Flight Results": {
+      "main": [
+        [
+          {
+            "node": "Check Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Results": {
+      "main": [
+        [
+          {
+            "node": "Send Gmail Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Slack Notification",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Telegram Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Results Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Gmail Notification": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Notification": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Notification": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle API Error": {
+      "main": [
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    "ai-generated",
+    "flight-search",
+    "notifications",
+    "multi-channel",
+    "slack",
+    "webhook"
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-15T10:00:00.000Z",
+  "versionId": "1",
+  "active": false,
+  "meta": {
+    "description": "Flight finder workflow with multi-channel notifications via Gmail, Slack, and Telegram. Searches for flights using Amadeus API and sends formatted results to users across multiple communication channels for confirmation."
+  }
+}
