@@ -1,0 +1,410 @@
+{
+  "name": "Flight Finder with Notifications and Booking Verification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "flight-search",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook1",
+      "name": "Flight Search Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "flight-search-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract flight search parameters from webhook\nconst { departure, destination, departureDate, passengers = 1, class: flightClass = 'economy' } = $input.first().json.body;\n\n// Validate required parameters\nif (!departure || !destination || !departureDate) {\n  throw new Error('Missing required parameters: departure, destination, or departureDate');\n}\n\n// Mock flight search (replace with actual API integration)\nconst flights = [\n  {\n    id: 'FL001',\n    airline: 'SkyLine Airways',\n    departure: departure,\n    destination: destination,\n    departureTime: '08:30',\n    arrivalTime: '12:45',\n    price: 299,\n    duration: '4h 15m',\n    class: flightClass,\n    available: true\n  },\n  {\n    id: 'FL002',\n    airline: 'CloudJet',\n    departure: departure,\n    destination: destination,\n    departureTime: '14:20',\n    arrivalTime: '18:35',\n    price: 349,\n    duration: '4h 15m',\n    class: flightClass,\n    available: true\n  },\n  {\n    id: 'FL003',\n    airline: 'AeroFly',\n    departure: departure,\n    destination: destination,\n    departureTime: '19:15',\n    arrivalTime: '23:30',\n    price: 279,\n    duration: '4h 15m',\n    class: flightClass,\n    available: true\n  }\n];\n\n// Find best flight (lowest price)\nconst bestFlight = flights.sort((a, b) => a.price - b.price)[0];\n\n// Return search results and best flight\nreturn {\n  searchParams: {\n    departure,\n    destination,\n    departureDate,\n    passengers,\n    class: flightClass\n  },\n  allFlights: flights,\n  bestFlight: bestFlight,\n  searchTimestamp: new Date().toISOString()\n};"
+      },
+      "id": "code1",
+      "name": "Flight Search Logic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.bestFlight.available }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if1",
+      "name": "Flight Available?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        440,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "message": {
+          "to": "user@example.com",
+          "subject": "Flight Found - {{ $json.bestFlight.departure }} to {{ $json.bestFlight.destination }}",
+          "body": "Great news! We found a flight for you:\n\n✈️ Flight Details:\nAirline: {{ $json.bestFlight.airline }}\nFlight: {{ $json.bestFlight.id }}\nRoute: {{ $json.bestFlight.departure }} → {{ $json.bestFlight.destination }}\nDeparture: {{ $json.searchParams.departureDate }} at {{ $json.bestFlight.departureTime }}\nArrival: {{ $json.bestFlight.arrivalTime }}\nDuration: {{ $json.bestFlight.duration }}\nClass: {{ $json.bestFlight.class }}\nPrice: ${{ $json.bestFlight.price }}\n\nPlease reply to this email with 'CONFIRM' to proceed with booking, or 'CANCEL' to decline.\n\nBest regards,\nFlight Finder Team"
+        },
+        "options": {}
+      },
+      "id": "gmail1",
+      "name": "Send Gmail Notification",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        660,
+        -100
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail_credentials",
+          "name": "Gmail OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "channel": "#flights",
+        "text": "🛫 Flight Found Alert!\n\n*Flight Details:*\n• Airline: {{ $json.bestFlight.airline }}\n• Flight: {{ $json.bestFlight.id }}\n• Route: {{ $json.bestFlight.departure }} → {{ $json.bestFlight.destination }}\n• Departure: {{ $json.searchParams.departureDate }} at {{ $json.bestFlight.departureTime }}\n• Arrival: {{ $json.bestFlight.arrivalTime }}\n• Duration: {{ $json.bestFlight.duration }}\n• Class: {{ $json.bestFlight.class }}\n• Price: ${{ $json.bestFlight.price }}\n\nPlease check your email for booking verification.",
+        "otherOptions": {}
+      },
+      "id": "slack1",
+      "name": "Send Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        660,
+        100
+      ],
+      "credentials": {
+        "slackOAuth2": {
+          "id": "slack_credentials",
+          "name": "Slack OAuth2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "flight-verification",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook2",
+      "name": "Flight Verification Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        0
+      ],
+      "webhookId": "flight-verification-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract verification response from webhook\nconst { action, flightId, userEmail } = $input.first().json.body;\n\n// Validate required parameters\nif (!action || !flightId) {\n  throw new Error('Missing required parameters: action or flightId');\n}\n\n// Process verification response\nconst verification = {\n  action: action.toUpperCase(),\n  flightId: flightId,\n  userEmail: userEmail,\n  timestamp: new Date().toISOString(),\n  verified: action.toUpperCase() === 'CONFIRM'\n};\n\n// Log verification attempt\nconsole.log(`Flight verification: ${verification.action} for flight ${verification.flightId}`);\n\nreturn verification;"
+      },
+      "id": "code2",
+      "name": "Process Verification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition1",
+              "leftValue": "={{ $json.verified }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if2",
+      "name": "Booking Confirmed?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1320,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://your-n8n-instance.com/webhook/flight-booking",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"flightId\": \"{{ $json.flightId }}\",\n  \"userEmail\": \"{{ $json.userEmail }}\",\n  \"action\": \"book\",\n  \"timestamp\": \"{{ $json.timestamp }}\",\n  \"source\": \"flight-finder-verification\"\n}",
+        "options": {}
+      },
+      "id": "httpRequest1",
+      "name": "Call Flight Booking Workflow",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1540,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Flight booking initiated\",\n  \"flightId\": \"{{ $json.flightId }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}"
+      },
+      "id": "respondToWebhook1",
+      "name": "Booking Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1760,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"cancelled\",\n  \"message\": \"Flight booking cancelled by user\",\n  \"flightId\": \"{{ $json.flightId }}\",\n  \"timestamp\": \"{{ $json.timestamp }}\"\n}"
+      },
+      "id": "respondToWebhook2",
+      "name": "Booking Cancelled Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"error\",\n  \"message\": \"No flights available for the specified criteria\",\n  \"searchParams\": {{ $json.searchParams }},\n  \"timestamp\": \"{{ $json.searchTimestamp }}\"\n}"
+      },
+      "id": "respondToWebhook3",
+      "name": "No Flight Available Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"success\",\n  \"message\": \"Flight found and notifications sent\",\n  \"flight\": {{ $json.bestFlight }},\n  \"verificationWebhook\": \"https://your-n8n-instance.com/webhook/flight-verification\",\n  \"instructions\": \"Check your email and Slack for flight details. Reply to email with CONFIRM or CANCEL to proceed.\"\n}"
+      },
+      "id": "respondToWebhook4",
+      "name": "Flight Found Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        880,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Add delay to ensure both notifications are sent\nawait new Promise(resolve => setTimeout(resolve, 2000));\n\n// Return the flight data for response\nreturn $input.first().json;"
+      },
+      "id": "code3",
+      "name": "Wait for Notifications",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "webhook1": {
+      "main": [
+        [
+          {
+            "node": "code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "code1": {
+      "main": [
+        [
+          {
+            "node": "if1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if1": {
+      "main": [
+        [
+          {
+            "node": "gmail1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "slack1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "respondToWebhook3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gmail1": {
+      "main": [
+        [
+          {
+            "node": "code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "slack1": {
+      "main": [
+        [
+          {
+            "node": "code3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "code3": {
+      "main": [
+        [
+          {
+            "node": "respondToWebhook4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "webhook2": {
+      "main": [
+        [
+          {
+            "node": "code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "code2": {
+      "main": [
+        [
+          {
+            "node": "if2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "if2": {
+      "main": [
+        [
+          {
+            "node": "httpRequest1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "respondToWebhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "httpRequest1": {
+      "main": [
+        [
+          {
+            "node": "respondToWebhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "tags": [
+    "ai-generated",
+    "assistant-expert",
+    "flight-finder",
+    "notifications",
+    "booking-verification",
+    "slack",
+    "webhook"
+  ],
+  "meta": {
+    "description": "Enhanced flight finder workflow that searches for flights, sends Gmail and Slack notifications when found, requests user verification for booking, and calls a separate booking workflow via webhook upon confirmation."
+  }
+}
