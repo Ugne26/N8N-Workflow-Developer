@@ -1,0 +1,451 @@
+{
+  "name": "Enhanced Anomaly Detection with Multi-Channel Notifications",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "1. Daily Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -500,
+        250
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "new-transaction",
+        "options": {}
+      },
+      "id": "b2c3d4e5-f6g7-8901-bcde-f23456789012",
+      "name": "2. Webhook: New Transaction",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        450
+      ],
+      "webhookId": "enhanced-anomaly-webhook"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 716758115,
+          "mode": "list",
+          "cachedResultName": "Transactions",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=716758115"
+        },
+        "options": {}
+      },
+      "id": "c3d4e5f6-g7h8-9012-cdef-345678901234",
+      "name": "3. Fetch Transactions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -200,
+        350
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Anomaly Detection - Duplicates + Spikes + Drifts\nconst items = $input.all();\nconst anomalies = [];\n\n// 1. DUPLICATE DETECTION\nconst seen = new Set();\nfor (const item of items) {\n  const key = `${item.json['User ID']}_${item.json.Date}_${item.json.Amount}_${item.json.Merchant}`;\n  if (seen.has(key)) {\n    anomalies.push({ \n      json: { \n        Type: \"Duplicate\", \n        Severity: \"Medium\",\n        ...item.json \n      } \n    });\n  } else {\n    seen.add(key);\n  }\n}\n\n// 2. SPIKE DETECTION\nconst grouped = {};\n// Group by category and calculate amounts\nfor (const tx of items) {\n  const cat = tx.json.Category || \"Other\";\n  if (!grouped[cat]) grouped[cat] = [];\n  grouped[cat].push(Math.abs(parseFloat(tx.json.Amount)));\n}\n\n// Find spikes (3x category average)\nfor (const tx of items) {\n  const cat = tx.json.Category || \"Other\";\n  const avg = grouped[cat].reduce((a, b) => a + b, 0) / grouped[cat].length;\n  const amount = Math.abs(parseFloat(tx.json.Amount));\n  \n  if (amount > avg * 3) {\n    anomalies.push({ \n      json: { \n        Type: \"Spike\", \n        Severity: \"High\",\n        ...tx.json, \n        AvgForCategory: avg.toFixed(2) \n      } \n    });\n  }\n}\n\n// 3. DRIFT DETECTION\nconst monthlyGrouped = {};\n// Group by category and month\nfor (const tx of items) {\n  const d = new Date(tx.json.Date);\n  const month = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2, '0')}`;\n  const cat = tx.json.Category || \"Other\";\n  \n  if (!monthlyGrouped[cat]) monthlyGrouped[cat] = {};\n  monthlyGrouped[cat][month] = (monthlyGrouped[cat][month] || 0) + Math.abs(parseFloat(tx.json.Amount));\n}\n\n// Check for month-over-month increases > 50%\nfor (const cat in monthlyGrouped) {\n  const months = Object.keys(monthlyGrouped[cat]).sort();\n  \n  for (let i = 1; i < months.length; i++) {\n    const prev = monthlyGrouped[cat][months[i-1]];\n    const curr = monthlyGrouped[cat][months[i]];\n    \n    if (curr > prev * 1.5) {\n      anomalies.push({ \n        json: { \n          Type: \"Drift\", \n          Severity: \"Medium\",\n          Category: cat, \n          Month: months[i], \n          Amount: curr.toFixed(2), \n          PrevMonth: prev.toFixed(2),\n          Date: months[i] + '-01'\n        } \n      });\n    }\n  }\n}\n\nreturn anomalies;"
+      },
+      "id": "d4e5f6g7-h8i9-0123-defg-456789012345",
+      "name": "4. Detect All Anomalies",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $items().length }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "e5f6g7h8-i9j0-1234-efgh-567890123456",
+      "name": "5. IF Any Anomalies?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        400,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format notification messages for different channels\nconst anomalies = $input.all();\nif (!anomalies.length) return [];\n\nlet emailSubject = '🚨 Financial Anomaly Detection Alert';\nlet emailBody = '<h2>🚨 Anomaly Detection Report</h2><br>';\nlet slackMessage = '🚨 *Anomaly Detection Report*\\n';\nlet telegramMessage = '🚨 *Anomaly Detection Report*\\n';\n\nfor (const item of anomalies) {\n  const anomaly = item.json;\n  let message = '';\n  \n  if (anomaly.Type === 'Duplicate') {\n    message = `• **Duplicate Transaction**: ${anomaly.Merchant} - €${Math.abs(anomaly.Amount)} on ${anomaly.Date}`;\n    emailBody += `<p><strong>Duplicate:</strong> ${anomaly.Merchant} - €${Math.abs(anomaly.Amount)} on ${anomaly.Date}</p>`;\n    slackMessage += `• *Duplicate*: ${anomaly.Merchant} - €${Math.abs(anomaly.Amount)} (${anomaly.Date})\\n`;\n    telegramMessage += `• *Duplicate*: ${anomaly.Merchant} - €${Math.abs(anomaly.Amount)} (${anomaly.Date})\\n`;\n  }\n  \n  if (anomaly.Type === 'Spike') {\n    message = `• **Spending Spike**: ${anomaly.Category} - €${Math.abs(anomaly.Amount)} (avg: €${anomaly.AvgForCategory})`;\n    emailBody += `<p><strong>Spike:</strong> ${anomaly.Category} - €${Math.abs(anomaly.Amount)} (category avg: €${anomaly.AvgForCategory})</p>`;\n    slackMessage += `• *Spike*: ${anomaly.Category} - €${Math.abs(anomaly.Amount)} (avg €${anomaly.AvgForCategory})\\n`;\n    telegramMessage += `• *Spike*: ${anomaly.Category} - €${Math.abs(anomaly.Amount)} (avg €${anomaly.AvgForCategory})\\n`;\n  }\n  \n  if (anomaly.Type === 'Drift') {\n    message = `• **Spending Drift**: ${anomaly.Category} increased to €${anomaly.Amount} (prev: €${anomaly.PrevMonth})`;\n    emailBody += `<p><strong>Drift:</strong> ${anomaly.Category} increased to €${anomaly.Amount} (previous: €${anomaly.PrevMonth})</p>`;\n    slackMessage += `• *Drift*: ${anomaly.Category} increased to €${anomaly.Amount} (prev €${anomaly.PrevMonth})\\n`;\n    telegramMessage += `• *Drift*: ${anomaly.Category} increased to €${anomaly.Amount} (prev €${anomaly.PrevMonth})\\n`;\n  }\n}\n\nemailBody += '<br><p><em>Generated by N8N Anomaly Detection System</em></p>';\nslackMessage += '\\n_Generated by N8N Anomaly Detection System_';\ntelegramMessage += '\\n_Generated by N8N Anomaly Detection System_';\n\nreturn [{\n  json: {\n    emailSubject,\n    emailBody,\n    slackMessage,\n    telegramMessage,\n    anomalyCount: anomalies.length,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "f6g7h8i9-j0k1-2345-fghi-678901234567",
+      "name": "6. Format Multi-Channel Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "channel": "#finance-alerts",
+        "text": "={{ $json.slackMessage }}",
+        "otherOptions": {},
+        "attachments": []
+      },
+      "id": "g7h8i9j0-k1l2-3456-ghij-789012345678",
+      "name": "7. Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        150
+      ],
+      "credentials": {
+        "slackOAuth2Api": {
+          "id": "x7HhQVPG79GNMFer",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "finance-team@company.com",
+        "subject": "={{ $json.emailSubject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "contentType": "html"
+        }
+      },
+      "id": "h8i9j0k1-l2m3-4567-hijk-890123456789",
+      "name": "8. Send Gmail Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        250
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "PLACEHOLDER_GMAIL_CRED_ID",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "finance-team@company.com",
+        "subject": "={{ $json.emailSubject }}",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "contentType": "html"
+        }
+      },
+      "id": "i9j0k1l2-m3n4-5678-ijkl-901234567890",
+      "name": "9. Send Outlook Alert",
+      "type": "n8n-nodes-base.microsoftOutlook",
+      "typeVersion": 2.1,
+      "position": [
+        1000,
+        350
+      ],
+      "credentials": {
+        "microsoftOutlookOAuth2Api": {
+          "id": "PLACEHOLDER_OUTLOOK_CRED_ID",
+          "name": "Outlook account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "-1001234567890",
+        "text": "={{ $json.telegramMessage }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "j0k1l2m3-n4o5-6789-jklm-012345678901",
+      "name": "10. Send Telegram Alert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1000,
+        450
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "PLACEHOLDER_TELEGRAM_CRED_ID",
+          "name": "Telegram Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4",
+          "mode": "list",
+          "cachedResultName": "n8n DATABASE",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1682341580,
+          "mode": "list",
+          "cachedResultName": "Alerts Log",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/17-EsdJPMCVIMf9tRP9cUyx9HQnWpUxG3VhBTjDQrYg4/edit#gid=1682341580"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json.timestamp }}",
+            "Alert Type": "Multi-Channel Anomaly Detection",
+            "Source": "Enhanced Detection System",
+            "Category/Name": "Financial Anomalies",
+            "Amount": "={{ $json.anomalyCount }} anomalies detected",
+            "Status": "Sent to All Channels",
+            "Message": "Notifications sent via Slack, Gmail, Outlook, and Telegram"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "User ID",
+              "displayName": "User ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Alert Type",
+              "displayName": "Alert Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Category/Name",
+              "displayName": "Category/Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Message",
+              "displayName": "Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "k1l2m3n4-o5p6-7890-klmn-123456789012",
+      "name": "11. Log Multi-Channel Alerts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        1300,
+        350
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "2lNdfNv7IjhhzTAg",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "1. Daily Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "3. Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Webhook: New Transaction": {
+      "main": [
+        [
+          {
+            "node": "3. Fetch Transactions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Fetch Transactions": {
+      "main": [
+        [
+          {
+            "node": "4. Detect All Anomalies",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Detect All Anomalies": {
+      "main": [
+        [
+          {
+            "node": "5. IF Any Anomalies?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. IF Any Anomalies?": {
+      "main": [
+        [
+          {
+            "node": "6. Format Multi-Channel Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Format Multi-Channel Messages": {
+      "main": [
+        [
+          {
+            "node": "7. Send Slack Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "8. Send Gmail Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "9. Send Outlook Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "10. Send Telegram Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "11. Log Multi-Channel Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    "financial-assistant",
+    "anomaly-detection",
+    "multi-channel-notifications",
+    "slack",
+    "gmail",
+    "outlook",
+    "telegram",
+    "ai-generated",
+    "google-sheets",
+    "scheduled",
+    "webhook"
+  ],
+  "meta": {
+    "description": "Enhanced anomaly detection workflow that monitors financial transactions for duplicates, spending spikes, and spending drifts, then sends notifications via multiple channels: Slack, Gmail, Outlook, and Telegram. Includes comprehensive logging and supports both scheduled and webhook triggers."
+  }
+}
