@@ -256,6 +256,72 @@
       ],
       "id": "cc92f4a6-30f0-49ca-81b9-9f384c0e548b",
       "name": "Format Skyscanner Response"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": {
+          "__rl": true,
+          "value": "C08106H7YQ9",
+          "mode": "list",
+          "cachedResultName": "#flight-notifications"
+        },
+        "text": "=✈️ *Flight Search Results - Amadeus*\n\n*Route:* {{ $('Process Flights').first().json.searchData.origin }} → {{ $('Process Flights').first().json.searchData.destination }}\n*Departure:* {{ $('Process Flights').first().json.searchData.departure_date }}\n*Return:* {{ $('Process Flights').first().json.searchData.return_date || 'One-way' }}\n*Passengers:* {{ $('Process Flights').first().json.searchData.adults }} adult(s)\n*Class:* {{ $('Process Flights').first().json.searchData.class }}\n\n*Flights Found:* {{ $('Process Flights').first().json.totalFound }}\n\n{{ $json.message.content }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        224
+      ],
+      "id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+      "name": "Send Amadeus Results to Slack"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": {
+          "__rl": true,
+          "value": "C08106H7YQ9",
+          "mode": "list",
+          "cachedResultName": "#flight-notifications"
+        },
+        "text": "=✈️ *Flight Search Results - Skyscanner*\n\n*Route:* {{ $('Process Skyscanner Flights').first().json.searchData.origin }} → {{ $('Process Skyscanner Flights').first().json.searchData.destination }}\n*Departure:* {{ $('Process Skyscanner Flights').first().json.searchData.departure_date }}\n*Passengers:* {{ $('Process Skyscanner Flights').first().json.searchData.adults }} adult(s)\n\n*Flights Found:* {{ $('Process Skyscanner Flights').first().json.totalFound }}\n\n{{ $json.message.content }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        0
+      ],
+      "id": "b2c3d4e5-f6a7-5b6c-9d0e-1f2a3b4c5d6e",
+      "name": "Send Skyscanner Results to Slack"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "post",
+        "channel": {
+          "__rl": true,
+          "value": "C08106H7YQ9",
+          "mode": "list",
+          "cachedResultName": "#flight-notifications"
+        },
+        "text": "=⚠️ *Flight Search Error*\n\n{{ $json.message }}\n\n{{ $json.suggestion }}",
+        "otherOptions": {}
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        464
+      ],
+      "id": "c3d4e5f6-a7b8-6c7d-0e1f-2a3b4c5d6e7f",
+      "name": "Send Error to Slack"
     }
   ],
   "connections": {
@@ -353,6 +419,39 @@
         [
           {
             "node": "Format Skyscanner Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Flight Response": {
+      "main": [
+        [
+          {
+            "node": "Send Amadeus Results to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Skyscanner Response": {
+      "main": [
+        [
+          {
+            "node": "Send Skyscanner Results to Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Handle Missing Info": {
+      "main": [
+        [
+          {
+            "node": "Send Error to Slack",
             "type": "main",
             "index": 0
           }
